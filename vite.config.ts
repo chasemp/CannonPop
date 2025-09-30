@@ -14,6 +14,7 @@ export default defineConfig({
     }
   },
   server: {
+    port: 5174, // Use different port to avoid conflicts with other Vite projects
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     }

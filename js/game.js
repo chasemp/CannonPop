@@ -3,7 +3,7 @@
  * Mobile-first bubble shooter with advanced PWA patterns
  */
 
-// Game Configuration
+// Mobile-First Responsive Game Configuration
 const GAME_CONFIG = {
     type: Phaser.AUTO,
     width: 400,
@@ -25,14 +25,29 @@ const GAME_CONFIG = {
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 400,
+        height: 600,
         min: {
             width: 320,
             height: 480
         },
         max: {
-            width: 800,
-            height: 1200
+            width: 500,  // Optimized for mobile screens
+            height: 800
         }
+    },
+    // Enhanced mobile input handling
+    input: {
+        activePointers: 3,
+        touch: {
+            capture: true
+        }
+    },
+    // Mobile performance optimizations
+    render: {
+        antialias: false,
+        pixelArt: false,
+        roundPixels: true
     }
 };
 
@@ -51,7 +66,13 @@ let gameState = {
     currentBubble: null,
     nextBubble: null,
     launcher: null,
+    cannonBarrel: null,
     bubbleGroup: null,
+    
+    // Aiming system
+    isAiming: false,
+    aimingLine: null,
+    currentAimAngle: 0,
     
     // UI elements
     scoreText: null,
@@ -70,6 +91,199 @@ let gameState = {
     startTime: null,
     lastShotTime: null
 };
+
+// Audio System for Carnival Theme
+class CarnivalAudioManager {
+    constructor() {
+        this.audioContext = null;
+        this.sounds = {};
+        this.musicEnabled = true;
+        this.sfxEnabled = true;
+        this.masterVolume = 0.7;
+        this.sfxVolume = 0.8;
+        this.musicVolume = 0.4;
+        
+        this.initializeAudio();
+    }
+    
+    initializeAudio() {
+        try {
+            // Create AudioContext (handles user gesture requirement)
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('🎵 Carnival Audio System initialized');
+        } catch (error) {
+            console.warn('⚠️ Audio not supported:', error);
+        }
+    }
+    
+    // Resume AudioContext after user interaction (required by browsers)
+    async resumeAudio() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            console.log('🎵 Audio context resumed');
+        }
+    }
+    
+    // Generate carnival-themed sound effects using Web Audio API
+    createCannonFireSound() {
+        if (!this.audioContext) return null;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        oscillator.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // Cannon boom sound
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(80, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(20, this.audioContext.currentTime + 0.3);
+        
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.4);
+        
+        return { oscillator, gainNode };
+    }
+    
+    createBubblePopSound() {
+        if (!this.audioContext) return null;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // Cheerful pop sound
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.6, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.15);
+        
+        return { oscillator, gainNode };
+    }
+    
+    createBubbleBounceSound() {
+        if (!this.audioContext) return null;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // Bouncy sound
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime + 0.05);
+        oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(this.sfxVolume * this.masterVolume * 0.3, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.12);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.12);
+        
+        return { oscillator, gainNode };
+    }
+    
+    createSuccessJingleSound() {
+        if (!this.audioContext) return null;
+        
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        const sounds = [];
+        
+        notes.forEach((freq, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+            
+            const startTime = this.audioContext.currentTime + (index * 0.1);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(this.sfxVolume * this.masterVolume * 0.4, startTime + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 0.3);
+            
+            sounds.push({ oscillator, gainNode });
+        });
+        
+        return sounds;
+    }
+    
+    // Public methods for playing sounds
+    playCannonFire() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        this.createCannonFireSound();
+    }
+    
+    playBubblePop() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        this.createBubblePopSound();
+    }
+    
+    playBubbleBounce() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        this.createBubbleBounceSound();
+    }
+    
+    playSuccessJingle() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        this.createSuccessJingleSound();
+    }
+    
+    // Settings management
+    setSfxEnabled(enabled) {
+        this.sfxEnabled = enabled;
+        localStorage.setItem('bustagroove_sfx_enabled', enabled.toString());
+    }
+    
+    setMusicEnabled(enabled) {
+        this.musicEnabled = enabled;
+        localStorage.setItem('bustagroove_music_enabled', enabled.toString());
+    }
+    
+    setMasterVolume(volume) {
+        this.masterVolume = Math.max(0, Math.min(1, volume));
+        localStorage.setItem('bustagroove_master_volume', this.masterVolume.toString());
+    }
+    
+    loadSettings() {
+        const sfxEnabled = localStorage.getItem('bustagroove_sfx_enabled');
+        const musicEnabled = localStorage.getItem('bustagroove_music_enabled');
+        const masterVolume = localStorage.getItem('bustagroove_master_volume');
+        
+        if (sfxEnabled !== null) this.sfxEnabled = sfxEnabled === 'true';
+        if (musicEnabled !== null) this.musicEnabled = musicEnabled === 'true';
+        if (masterVolume !== null) this.masterVolume = parseFloat(masterVolume);
+    }
+}
+
+// Global audio manager instance
+let audioManager;
 
 // Game State Constants
 const GAME_STATES = {
@@ -92,12 +306,12 @@ const BUBBLE_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
  * Load game assets
  */
 function preload() {
-    // Create simple colored circles for bubbles
+    console.log('🎯 Phaser preload() called');
+    console.log('🔍 Scale dimensions:', this.scale.width, 'x', this.scale.height);
+    
+    // Create balloon sprites with strings/tails
     BUBBLE_COLORS.forEach(color => {
-        this.add.graphics()
-            .fillStyle(getColorHex(color))
-            .fillCircle(BUBBLE_RADIUS, BUBBLE_RADIUS, BUBBLE_RADIUS)
-            .generateTexture(color + '_bubble', BUBBLE_RADIUS * 2, BUBBLE_RADIUS * 2);
+        createBalloonTexture.call(this, color);
     });
     
     console.log('🎮 Game assets loaded');
@@ -110,11 +324,15 @@ function preload() {
 function create() {
     console.log('🚀 Initializing BustAGroove game...');
     
+    // Initialize audio system
+    audioManager = new CarnivalAudioManager();
+    audioManager.loadSettings();
+    
+    // Create bubble group for physics BEFORE initializing grid
+    gameState.bubbleGroup = this.physics.add.group();
+    
     // Initialize grid system
     initializeGrid.call(this);
-    
-    // Create bubble group for physics
-    gameState.bubbleGroup = this.physics.add.group();
     
     // Create launcher
     createLauncher.call(this);
@@ -330,20 +548,427 @@ function populateInitialGrid() {
 }
 
 /**
- * Create bubble launcher
+ * Create balloon cannon launcher
+ * Replaces generic bubble launcher with themed cannon
  */
 function createLauncher() {
     const launcherX = GAME_CONFIG.width / 2;
     const launcherY = GAME_CONFIG.height - 60;
     
-    // Create launcher base
-    gameState.launcher = this.add.circle(launcherX, launcherY, 30, 0x8d6e63);
+    // Create cannon container for grouped elements
+    gameState.launcher = this.add.container(launcherX, launcherY);
+    
+    // Create cannon base (wooden platform)
+    const cannonBase = this.add.rectangle(0, 20, 80, 25, 0x8b4513);
+    cannonBase.setStrokeStyle(2, 0x654321);
+    gameState.launcher.add(cannonBase);
+    
+    // Create cannon wheels
+    const leftWheel = this.add.circle(-25, 32, 12, 0x444444);
+    leftWheel.setStrokeStyle(2, 0x222222);
+    const rightWheel = this.add.circle(25, 32, 12, 0x444444);
+    rightWheel.setStrokeStyle(2, 0x222222);
+    gameState.launcher.add([leftWheel, rightWheel]);
+    
+    // Create cannon barrel (main tube) - store reference for rotation
+    gameState.cannonBarrel = this.add.rectangle(0, -5, 60, 20, 0x666666);
+    gameState.cannonBarrel.setStrokeStyle(2, 0x444444);
+    gameState.cannonBarrel.setOrigin(0.8, 0.5); // Set rotation point near the base
+    gameState.launcher.add(gameState.cannonBarrel);
+    
+    // Create cannon muzzle (darker end)
+    const cannonMuzzle = this.add.circle(0, -5, 15, 0x333333);
+    cannonMuzzle.setStrokeStyle(2, 0x111111);
+    gameState.launcher.add(cannonMuzzle);
+    
+    // Create decorative cannon details
+    const cannonRim = this.add.circle(0, -5, 18, 0x555555, 0);
+    cannonRim.setStrokeStyle(3, 0x777777);
+    gameState.launcher.add(cannonRim);
+    
+    // Add carnival-style decorations
+    const leftFlag = this.add.triangle(-35, -10, 0, 0, 8, -12, 0, -8, 0xff6b35);
+    const rightFlag = this.add.triangle(35, -10, 0, 0, -8, -12, 0, -8, 0xff6b35);
+    gameState.launcher.add([leftFlag, rightFlag]);
+    
+    // Store original position for recoil animation
+    gameState.cannonOriginalY = launcherY;
+    
+    // Store barrel reference in game state for rotation
+    gameState.cannonBarrel = gameState.cannonBarrel;
     
     // Create current bubble
     createNewBubble.call(this);
     
     // Create next bubble preview
     createNextBubble.call(this);
+    
+    // Set up input handling for cannon aiming
+    this.input.on('pointermove', handlePointerMove, this);
+    this.input.on('pointerdown', handlePointerDown, this);
+}
+
+/**
+ * Trigger cannon recoil animation
+ * Adds visual feedback when shooting balloons
+ */
+function triggerCannonRecoil() {
+    if (!gameState.launcher) return;
+    
+    // Recoil effect - move cannon back and forth
+    this.tweens.add({
+        targets: gameState.launcher,
+        y: gameState.cannonOriginalY + 8, // Move down slightly
+        duration: 100,
+        ease: 'Power2',
+        yoyo: true,
+        repeat: 0,
+        onComplete: () => {
+            // Return to original position
+            gameState.launcher.y = gameState.cannonOriginalY;
+        }
+    });
+    
+    // Add barrel shake for extra effect
+    if (gameState.cannonBarrel) {
+        this.tweens.add({
+            targets: gameState.cannonBarrel,
+            scaleX: 1.1,
+            scaleY: 0.9,
+            duration: 80,
+            ease: 'Power2',
+            yoyo: true,
+            repeat: 0
+        });
+    }
+}
+
+/**
+ * Create muzzle flash effect
+ * Visual effect when cannon fires
+ */
+function createMuzzleFlash(x, y) {
+    // Create bright flash circle
+    const flash = this.add.circle(x, y, 25, 0xffff00, 0.8);
+    
+    // Add orange outer glow
+    const glow = this.add.circle(x, y, 35, 0xff6600, 0.4);
+    
+    // Animate flash effect
+    this.tweens.add({
+        targets: [flash, glow],
+        scaleX: 1.5,
+        scaleY: 1.5,
+        alpha: 0,
+        duration: 150,
+        ease: 'Power2',
+        onComplete: () => {
+            flash.destroy();
+            glow.destroy();
+        }
+    });
+    
+    // Add some spark particles
+    for (let i = 0; i < 8; i++) {
+        const spark = this.add.circle(
+            x + (Math.random() - 0.5) * 20,
+            y + (Math.random() - 0.5) * 20,
+            2,
+            0xffaa00
+        );
+        
+        this.tweens.add({
+            targets: spark,
+            x: spark.x + (Math.random() - 0.5) * 40,
+            y: spark.y + (Math.random() - 0.5) * 40,
+            alpha: 0,
+            duration: 200 + Math.random() * 100,
+            ease: 'Power2',
+            onComplete: () => spark.destroy()
+        });
+    }
+}
+
+/**
+ * Rotate cannon barrel to aim at target
+ */
+function rotateCannon(angle) {
+    if (!gameState.cannonBarrel) return;
+    
+    // Convert angle to rotation (Phaser uses different coordinate system)
+    // Clamp rotation to reasonable limits (-60° to 60°)
+    const maxRotation = Phaser.Math.DegToRad(60);
+    const minRotation = Phaser.Math.DegToRad(-60);
+    
+    // Convert world angle to cannon rotation
+    let rotation = angle + Math.PI / 2; // Adjust for cannon's default orientation
+    rotation = Phaser.Math.Clamp(rotation, minRotation, maxRotation);
+    
+    // Smooth rotation animation
+    this.tweens.add({
+        targets: gameState.cannonBarrel,
+        rotation: rotation,
+        duration: 150,
+        ease: 'Power2'
+    });
+}
+
+/**
+ * Handle pointer move for aiming
+ */
+function handlePointerMove(pointer) {
+    if (!gameState.currentBubble) return;
+    
+    // Calculate angle for cannon aiming
+    const launcherX = GAME_CONFIG.width / 2;
+    const launcherY = GAME_CONFIG.height - 60;
+    
+    const angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, pointer.x, pointer.y);
+    
+    // Rotate cannon to aim
+    rotateCannon.call(this, angle);
+    
+    // Store angle for shooting
+    gameState.currentAimAngle = angle;
+}
+
+/**
+ * Handle pointer down for shooting
+ */
+function handlePointerDown(pointer) {
+    if (!gameState.currentBubble) return;
+    
+    // Shoot bubble in the aimed direction
+    const launcherX = GAME_CONFIG.width / 2;
+    const launcherY = GAME_CONFIG.height - 60;
+    
+    // Use current aim angle or calculate from pointer
+    const angle = gameState.currentAimAngle || 
+                  Phaser.Math.Angle.Between(launcherX, launcherY - 40, pointer.x, pointer.y);
+    
+    // Calculate target position from angle
+    const distance = 400;
+    const targetX = launcherX + Math.cos(angle) * distance;
+    const targetY = launcherY - 40 + Math.sin(angle) * distance;
+    
+    // Shoot the bubble
+    shootBubble.call(this, targetX, targetY);
+}
+
+/**
+ * Shoot a bubble towards the target position
+ */
+function shootBubble(targetX, targetY) {
+    if (!gameState.currentBubble) return;
+    
+    // Get launcher position
+    const launcherX = GAME_CONFIG.width / 2;
+    const launcherY = GAME_CONFIG.height - 60;
+    
+    // Calculate velocity based on target
+    const angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, targetX, targetY);
+    const speed = 300;
+    const velocityX = Math.cos(angle) * speed;
+    const velocityY = Math.sin(angle) * speed;
+    
+    // Set bubble physics
+    gameState.currentBubble.setVelocity(velocityX, velocityY);
+    gameState.currentBubble.setBounce(0.8, 0.8);
+    gameState.currentBubble.setCollideWorldBounds(true);
+    
+    // Add subtle glow effect while in flight
+    addBalloonGlow.call(this, gameState.currentBubble);
+    
+    // Add collision with other bubbles
+    this.physics.add.collider(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
+        // Handle bubble collision - snap to grid
+        snapBubbleToGrid.call(this, bubble, target);
+    });
+    
+    // Play cannon fire sound
+    if (audioManager) {
+        audioManager.playCannonFire();
+    }
+    
+    // Trigger cannon recoil animation
+    triggerCannonRecoil.call(this);
+    
+    // Create muzzle flash
+    createMuzzleFlash.call(this);
+    
+    // Clear current bubble
+    gameState.currentBubble = null;
+    
+    // Create next bubble after a short delay
+    this.time.delayedCall(500, () => {
+        createNewBubble.call(this);
+    });
+}
+
+/**
+ * Add subtle glow effect to a balloon while it's in flight
+ */
+function addBalloonGlow(bubble) {
+    // Create a subtle glow effect
+    const glow = this.add.circle(bubble.x, bubble.y, BUBBLE_RADIUS + 8, 0xffffff, 0.1);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Make glow follow the bubble
+    bubble.glow = glow;
+    
+    // Add gentle pulsing animation
+    this.tweens.add({
+        targets: glow,
+        alpha: 0.3,
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+    });
+    
+    // Update glow position to follow the bubble
+    bubble.updateGlow = () => {
+        if (bubble.glow && bubble.active) {
+            bubble.glow.setPosition(bubble.x, bubble.y);
+        }
+    };
+}
+
+/**
+ * Remove glow effect when balloon comes to rest
+ */
+function removeBalloonGlow(bubble) {
+    if (bubble.glow) {
+        bubble.glow.destroy();
+        bubble.glow = null;
+    }
+}
+
+/**
+ * Snap a fired bubble to the grid when it collides
+ */
+function snapBubbleToGrid(firedBubble, targetBubble) {
+    // Calculate grid position
+    const gridPos = worldToGrid(firedBubble.x, firedBubble.y);
+    
+    // Stop the bubble
+    firedBubble.setVelocity(0, 0);
+    
+    // Remove glow effect when balloon comes to rest
+    removeBalloonGlow.call(this, firedBubble);
+    
+    // Snap to exact grid position
+    const worldPos = gridToWorld(gridPos.col, gridPos.row);
+    firedBubble.setPosition(worldPos.x, worldPos.y);
+    
+    // Add to grid
+    if (gameState.grid[gridPos.row]) {
+        gameState.grid[gridPos.row][gridPos.col] = {
+            color: firedBubble.texture.key.replace('_bubble', ''),
+            sprite: firedBubble
+        };
+    }
+    
+    // Check for matches
+    checkForMatches.call(this, gridPos.col, gridPos.row);
+}
+
+/**
+ * Check for matches starting from a position
+ */
+function checkForMatches(col, row) {
+    // Basic match detection - find connected bubbles of same color
+    const color = gameState.grid[row][col].color;
+    const visited = new Set();
+    const matches = [];
+    
+    function dfs(c, r) {
+        const key = `${c},${r}`;
+        if (visited.has(key)) return;
+        if (!gameState.grid[r] || !gameState.grid[r][c]) return;
+        if (gameState.grid[r][c].color !== color) return;
+        
+        visited.add(key);
+        matches.push({col: c, row: r});
+        
+        // Check all 6 neighbors in hexagonal grid
+        const neighbors = [
+            {c: c-1, r: r}, {c: c+1, r: r}, // left, right
+            {c: c-1, r: r-1}, {c: c, r: r-1}, // top-left, top-right
+            {c: c-1, r: r+1}, {c: c, r: r+1}  // bottom-left, bottom-right
+        ];
+        
+        neighbors.forEach(({c: nc, r: nr}) => {
+            if (nc >= 0 && nc < GRID_WIDTH && nr >= 0 && nr < GRID_HEIGHT) {
+                dfs(nc, nr);
+            }
+        });
+    }
+    
+    dfs(col, row);
+    
+    // If we found 3 or more matches, remove them
+    if (matches.length >= 3) {
+        matches.forEach(({col: c, row: r}) => {
+            if (gameState.grid[r] && gameState.grid[r][c]) {
+                gameState.grid[r][c].sprite.destroy();
+                gameState.grid[r][c] = null;
+            }
+        });
+        
+        // Play success sound
+        if (audioManager) {
+            audioManager.playSuccessJingle();
+        }
+    }
+}
+
+/**
+ * Create clean balloon texture without flicker
+ * Simple, solid design for smooth visual experience
+ */
+function createBalloonTexture(color) {
+    const graphics = this.add.graphics();
+    const balloonRadius = BUBBLE_RADIUS;
+    const stringLength = 8;
+    
+    // Create balloon body with solid color - no gradients or complex effects
+    const colorHex = getColorHex(color);
+    graphics.fillStyle(colorHex, 1);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 2, balloonRadius * 2.1);
+    
+    // Add very subtle highlight for depth (minimal opacity)
+    graphics.fillStyle(0xffffff, 0.1);
+    graphics.fillEllipse(balloonRadius - 4, balloonRadius - 5, 4, 6);
+    
+    // Add simple balloon string
+    graphics.lineStyle(1, 0x333333, 0.8);
+    graphics.beginPath();
+    graphics.moveTo(balloonRadius, balloonRadius * 2 - 2);
+    graphics.lineTo(balloonRadius + 1, balloonRadius * 2 + stringLength);
+    graphics.strokePath();
+    
+    // Add small knot at the end
+    graphics.fillStyle(0x333333, 0.7);
+    graphics.fillCircle(balloonRadius + 1, balloonRadius * 2 + stringLength, 1);
+    
+    // Generate clean texture
+    const textureWidth = balloonRadius * 2 + 4;
+    const textureHeight = balloonRadius * 2 + stringLength + 4;
+    graphics.generateTexture(color + '_bubble', textureWidth, textureHeight);
+    
+    // Clean up graphics object
+    graphics.destroy();
+}
+
+/**
+ * Main game update loop
+ */
+function update() {
+    // Update glow effects for any moving bubbles
+    if (gameState.currentBubble && gameState.currentBubble.updateGlow) {
+        gameState.currentBubble.updateGlow();
+    }
 }
 
 /**
@@ -387,46 +1012,73 @@ function createNextBubble() {
 
 /**
  * Setup input handling for mobile and desktop
- * Implements dual event handling from PWA lessons
+ * Implements dual event handling from PWA lessons with mobile optimizations
  */
 function setupInputHandling() {
-    // Touch/Mouse input for aiming and shooting
+    // Enhanced touch/mouse input for aiming and shooting
     this.input.on('pointerdown', handlePointerDown.bind(this));
     this.input.on('pointermove', handlePointerMove.bind(this));
+    this.input.on('pointerup', handlePointerUp.bind(this));
     
-    // Keyboard input for desktop
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    // Mobile-specific touch optimizations
+    this.input.addPointer(2); // Support multi-touch
+    this.input.topOnly = false; // Allow interaction with overlapping elements
+    
+    // Enhanced mobile gesture support
+    this.input.on('drag', handleDrag.bind(this));
+    this.input.on('dragstart', handleDragStart.bind(this));
+    this.input.on('dragend', handleDragEnd.bind(this));
+    
+    // Keyboard input for desktop (graceful degradation)
+    if (this.input.keyboard) {
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    }
+    
+    // Add visual feedback for touch targets
+    setupTouchFeedback.call(this);
 }
 
 /**
  * Handle pointer down events (shooting and UI interaction)
+ * Enhanced for mobile with touch feedback and gesture recognition
  */
 function handlePointerDown(pointer) {
+    // Add haptic feedback for mobile devices (if supported)
+    if (navigator.vibrate && pointer.event && pointer.event.touches) {
+        navigator.vibrate(50); // Short vibration for touch feedback
+    }
+    
+    // Store touch start position for gesture detection
+    gameState.touchStartX = pointer.x;
+    gameState.touchStartY = pointer.y;
+    gameState.touchStartTime = Date.now();
+    
     switch (gameState.currentState) {
         case GAME_STATES.MENU:
-            // Check for menu button clicks
+            // Check for menu button clicks with larger touch targets
             handleMenuClick.call(this, pointer.x, pointer.y);
             break;
             
         case GAME_STATES.PLAYING:
             if (gameState.currentBubble) {
-                shootBubble.call(this, pointer.x, pointer.y);
+                // Enhanced aiming for touch devices
+                startAiming.call(this, pointer.x, pointer.y);
             }
             break;
             
         case GAME_STATES.PAUSED:
-            // Check for resume button
+            // Check for resume button with mobile-friendly hit areas
             handlePauseClick.call(this, pointer.x, pointer.y);
             break;
             
         case GAME_STATES.GAME_OVER:
-            // Check for restart/menu buttons
+            // Check for restart/menu buttons with enhanced touch targets
             handleGameOverClick.call(this, pointer.x, pointer.y);
             break;
             
         case GAME_STATES.LEVEL_COMPLETE:
-            // Check for next level/menu buttons
+            // Check for next level/menu buttons with mobile optimization
             handleLevelCompleteClick.call(this, pointer.x, pointer.y);
             break;
     }
@@ -434,11 +1086,18 @@ function handlePointerDown(pointer) {
 
 /**
  * Handle pointer move events (aiming)
+ * Enhanced for mobile with smooth trajectory preview
  */
 function handlePointerMove(pointer) {
-    if (!gameState.gameActive || !gameState.currentBubble) return;
+    if (gameState.currentState !== GAME_STATES.PLAYING || !gameState.currentBubble) return;
     
-    // Update aiming visual feedback here
+    // Update aiming trajectory with mobile-optimized smoothing
+    updateAimingTrajectory.call(this, pointer.x, pointer.y);
+    
+    // Update visual aiming feedback
+    if (gameState.aimingLine) {
+        updateAimingVisuals.call(this, pointer.x, pointer.y);
+    }
 }
 
 /**
@@ -449,7 +1108,7 @@ function updateAiming() {
 }
 
 /**
- * Shoot bubble towards target
+ * Shoot bubble towards target with cannon recoil animation
  */
 function shootBubble(targetX, targetY) {
     if (!gameState.currentBubble) return;
@@ -457,6 +1116,17 @@ function shootBubble(targetX, targetY) {
     const bubble = gameState.currentBubble;
     const launcherX = GAME_CONFIG.width / 2;
     const launcherY = GAME_CONFIG.height - 60;
+    
+    // Trigger cannon recoil animation
+    triggerCannonRecoil.call(this);
+    
+    // Create muzzle flash effect
+    createMuzzleFlash.call(this, launcherX, launcherY - 40);
+    
+    // Play cannon fire sound effect
+    if (audioManager) {
+        audioManager.playCannonFire();
+    }
     
     // Calculate trajectory
     const angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, targetX, targetY);
@@ -1590,21 +2260,183 @@ function getColorHex(colorName) {
     return colors[colorName] || 0xffffff;
 }
 
+/**
+ * Mobile-Specific Touch Handling Functions
+ * Enhanced input for mobile gameplay
+ */
+
+/**
+ * Handle pointer up events (release shooting)
+ */
+function handlePointerUp(pointer) {
+    if (gameState.currentState !== GAME_STATES.PLAYING || !gameState.currentBubble) return;
+    
+    // Calculate touch duration for gesture recognition
+    const touchDuration = Date.now() - gameState.touchStartTime;
+    const touchDistance = Phaser.Math.Distance.Between(
+        gameState.touchStartX, gameState.touchStartY,
+        pointer.x, pointer.y
+    );
+    
+    // Determine if this was a tap or drag gesture
+    if (touchDuration < 200 && touchDistance < 20) {
+        // Quick tap - shoot immediately
+        shootBubble.call(this, pointer.x, pointer.y);
+    } else if (gameState.isAiming) {
+        // Drag release - shoot with current aim
+        shootBubble.call(this, pointer.x, pointer.y);
+    }
+    
+    // Clean up aiming state
+    stopAiming.call(this);
+}
+
+/**
+ * Start aiming mode for mobile
+ */
+function startAiming(targetX, targetY) {
+    gameState.isAiming = true;
+    
+    // Create or update aiming line
+    if (!gameState.aimingLine) {
+        gameState.aimingLine = this.add.graphics();
+    }
+    
+    updateAimingVisuals.call(this, targetX, targetY);
+}
+
+/**
+ * Stop aiming mode
+ */
+function stopAiming() {
+    gameState.isAiming = false;
+    
+    if (gameState.aimingLine) {
+        gameState.aimingLine.clear();
+    }
+}
+
+/**
+ * Update aiming trajectory calculation
+ */
+function updateAimingTrajectory(targetX, targetY) {
+    if (!gameState.currentBubble) return;
+    
+    const launcherX = GAME_CONFIG.width / 2;
+    const launcherY = GAME_CONFIG.height - 60;
+    
+    // Calculate angle with mobile-friendly constraints
+    let angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, targetX, targetY);
+    
+    // Limit aiming angle for better mobile UX (prevent shooting backwards)
+    const maxAngle = Math.PI * 0.8; // 144 degrees
+    const minAngle = Math.PI * 0.2; // 36 degrees
+    
+    if (angle > maxAngle) angle = maxAngle;
+    if (angle < minAngle) angle = minAngle;
+    
+    gameState.currentAimAngle = angle;
+}
+
+/**
+ * Update visual aiming feedback
+ */
+function updateAimingVisuals(targetX, targetY) {
+    if (!gameState.aimingLine) return;
+    
+    const launcherX = GAME_CONFIG.width / 2;
+    const launcherY = GAME_CONFIG.height - 60;
+    
+    gameState.aimingLine.clear();
+    gameState.aimingLine.lineStyle(3, 0xffffff, 0.7);
+    
+    // Draw aiming line with trajectory preview
+    const lineLength = 150;
+    const endX = launcherX + Math.cos(gameState.currentAimAngle) * lineLength;
+    const endY = launcherY + Math.sin(gameState.currentAimAngle) * lineLength;
+    
+    gameState.aimingLine.moveTo(launcherX, launcherY - 40);
+    gameState.aimingLine.lineTo(endX, endY);
+    
+    // Add trajectory dots for better mobile feedback
+    for (let i = 1; i <= 5; i++) {
+        const dotX = launcherX + Math.cos(gameState.currentAimAngle) * (lineLength * i / 5);
+        const dotY = launcherY + Math.sin(gameState.currentAimAngle) * (lineLength * i / 5);
+        gameState.aimingLine.fillStyle(0xffffff, 0.5);
+        gameState.aimingLine.fillCircle(dotX, dotY, 2);
+    }
+}
+
+/**
+ * Setup touch feedback visual elements
+ */
+function setupTouchFeedback() {
+    // Create touch ripple effect container
+    gameState.touchEffects = this.add.container();
+}
+
+/**
+ * Handle drag events for mobile gestures
+ */
+function handleDrag(pointer, gameObject, dragX, dragY) {
+    // Could be used for future gesture-based controls
+}
+
+/**
+ * Handle drag start for mobile gestures
+ */
+function handleDragStart(pointer, gameObject) {
+    // Visual feedback for drag start
+}
+
+/**
+ * Handle drag end for mobile gestures
+ */
+function handleDragEnd(pointer, gameObject) {
+    // Cleanup drag visuals
+}
+
 // Initialize game when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎯 Initializing Phaser game...');
+    console.log('🎯 Initializing Mobile-Optimized Phaser game...');
+    console.log('🔍 DOM loaded, Phaser available:', typeof Phaser !== 'undefined');
+    console.log('🔍 Game container exists:', !!document.getElementById('game-container'));
     
     // Remove loading message
     const loading = document.querySelector('.loading');
     if (loading) {
+        console.log('🔍 Removing loading message');
         loading.style.display = 'none';
     }
     
-    // Create Phaser game instance
-    game = new Phaser.Game(GAME_CONFIG);
-    window.gameInstance = game;
-    
-    console.log('✅ Phaser game created');
+    try {
+        // Create Phaser game instance with mobile optimizations
+        console.log('🔍 Creating Phaser game with config:', GAME_CONFIG);
+        game = new Phaser.Game(GAME_CONFIG);
+        window.gameInstance = game;
+        
+        console.log('✅ Mobile-optimized Phaser game created successfully');
+        
+        // Add game ready event listener
+        game.events.on('ready', () => {
+            console.log('🎮 Phaser game is ready and running!');
+        });
+        
+    } catch (error) {
+        console.error('❌ Error creating Phaser game:', error);
+        
+        // Show error message in the game container
+        const container = document.getElementById('game-container');
+        if (container) {
+            container.innerHTML = `
+                <div style="color: #f5f1e8; text-align: center; padding: 20px;">
+                    <h3>Game Loading Error</h3>
+                    <p>Failed to initialize the game engine.</p>
+                    <p style="font-size: 12px; opacity: 0.7;">Check console for details.</p>
+                </div>
+            `;
+        }
+    }
 });
 
 // Export for global access

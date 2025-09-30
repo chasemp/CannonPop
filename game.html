@@ -7,24 +7,28 @@
     <title>BustAGroove Game</title>
     
     <!-- Game-specific CSS with cache busting -->
-    <link rel="stylesheet" href="./css/game.css?v=2025.09.26.2319" />
+    <link rel="stylesheet" href="./css/game.css?v=v202509270014" />
     
     <style>
       /* Ensure full viewport usage */
-      body {
+      html, body {
         margin: 0;
         padding: 0;
+        width: 100%;
+        height: 100%;
         background: #2c1810;
         overflow: hidden;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       }
       
       #game-container {
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
+        min-height: 600px;
         display: flex;
         justify-content: center;
         align-items: center;
+        overflow: hidden; /* Prevent scrollbars */
       }
       
       /* Loading state */
@@ -40,11 +44,11 @@
       <div class="loading">Loading BustAGroove...</div>
     </div>
     
-    <!-- Phaser from CDN for reliability -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+    <!-- Phaser library (local copy for offline capability) -->
+    <script src="./public/libs/phaser.min.js"></script>
     
     <!-- Game entry point with cache busting -->
-    <script src="./js/game.js?v=2025.09.26.2319"></script>
+    <script src="./js/game.js?v=v202509270014"></script>
     
     <!-- PostMessage communication setup -->
     <script>

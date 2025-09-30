@@ -1,0 +1,151 @@
+/**
+ * BustAGroove - Light Theme
+ * Bright and airy colors for daytime gaming
+ */
+
+[data-theme="light"] {
+  /* Light Theme Colors - Bright and Clean */
+  --bg-color: #f8f9fa;
+  --text-color: #2c3e50;
+  --primary-color: #3498db;
+  --secondary-color: #ecf0f1;
+  --accent-color: #e74c3c;
+  --balloon-red: #e74c3c;
+  --balloon-blue: #3498db;
+  --balloon-green: #2ecc71;
+  --balloon-yellow: #f39c12;
+  --balloon-purple: #9b59b6;
+  --balloon-orange: #e67e22;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --error-color: #e74c3c;
+  
+  /* Header & Navigation */
+  --header-bg: #3498db;
+  --card-bg: rgba(52, 152, 219, 0.1);
+  --primary-hover: #2980b9;
+  --secondary-hover: #bdc3c7;
+  --border-color: #bdc3c7;
+  --text-muted: #7f8c8d;
+  
+  /* Spacing remains the same */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Enhanced touch targets for mobile */
+  --touch-target: 48px;
+  --touch-target-small: 44px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Light theme specific background */
+[data-theme="light"] body {
+  background: linear-gradient(135deg, var(--bg-color) 0%, #ecf0f1 100%);
+  color: var(--text-color);
+}
+
+/* Light theme button enhancements */
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+[data-theme="light"] .btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover) 0%, #c0392b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+[data-theme="light"] .btn-secondary {
+  background: var(--secondary-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="light"] .btn-secondary:hover {
+  background: var(--secondary-hover);
+  border-color: var(--primary-color);
+}
+
+/* Light theme navigation */
+[data-theme="light"] .header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+}
+
+[data-theme="light"] .header h1 {
+  color: white;
+}
+
+[data-theme="light"] .score-display {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .nav-container {
+  background: rgba(52, 152, 219, 0.1);
+}
+
+[data-theme="light"] .nav-tab {
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+[data-theme="light"] .nav-tab.active {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+[data-theme="light"] .nav-tab:hover {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: var(--primary-color);
+}
+
+/* Light theme game elements */
+[data-theme="light"] .game-container {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .loading {
+  color: var(--primary-color);
+}
+
+/* Light theme content areas */
+[data-theme="light"] .tab-content {
+  color: var(--text-color);
+}
+
+[data-theme="light"] .score-item {
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .score-item .score {
+  color: var(--accent-color);
+}
+
+/* Light theme form elements */
+[data-theme="light"] input,
+[data-theme="light"] select {
+  background: white;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
