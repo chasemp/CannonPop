@@ -446,6 +446,50 @@ body {
   }
 }
 
+/* Mobile Performance Optimizations for GitHub Pages */
+* {
+  /* Enable hardware acceleration for better mobile performance */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  perspective: 1000;
+}
+
+/* Optimize touch interactions */
+button, .btn, .tab-button {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* Optimize canvas rendering */
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* Reduce motion for better performance on low-end devices */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Optimize for mobile viewport */
+@supports (padding: max(0px)) {
+  .app-container {
+    padding-left: max(var(--spacing-md), var(--safe-area-inset-left));
+    padding-right: max(var(--spacing-md), var(--safe-area-inset-right));
+  }
+}
+
 /* Enhanced Mobile Optimizations */
 @media (max-width: 767px) {
   /* Header mobile optimizations */

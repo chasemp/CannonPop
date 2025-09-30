@@ -3,7 +3,11 @@
 A modern, mobile-first Progressive Web App implementation of the classic Bust-a-Move bubble shooter game, built with advanced PWA patterns learned from real-world production deployments.
 
 ## 🚀 **Live Demo**
-[Play CannonPop](https://chasemp.github.io/CannonPop/) (Coming soon)
+[Play CannonPop](https://chasemp.github.io/CannonPop/) - Mobile-optimized PWA
+
+**📱 Mobile-First Design**: Optimized for touch interactions and mobile screens
+**🎮 Play on Any Device**: Works on phones, tablets, and desktop
+**⚡ Offline Capable**: Play anywhere, even without internet
 
 ## ✨ **Features**
 
@@ -206,16 +210,24 @@ This project implements battle-tested patterns from production PWA development:
 
 ## 🚀 **Deployment**
 
-### **GitHub Pages Setup**
-1. Enable GitHub Pages in repository settings
-2. Set source to "GitHub Actions"
-3. Push to main branch triggers automatic deployment
-4. Ultra-simple workflow deploys entire repository
+### **GitHub Pages Setup (Mobile-Optimized)**
+1. **Enable GitHub Pages**: Go to repository Settings → Pages
+2. **Set Source**: "GitHub Actions" (automatic deployment)
+3. **Push to Main**: Triggers automatic mobile-optimized build
+4. **Access URL**: `https://chasemp.github.io/CannonPop/`
+
+### **Mobile Testing Checklist**
+- [ ] **Touch Events**: Tap and drag to aim works smoothly
+- [ ] **Responsive Design**: Scales properly on all screen sizes
+- [ ] **PWA Installation**: "Add to Home Screen" works on mobile
+- [ ] **Offline Mode**: Game works without internet connection
+- [ ] **Performance**: Smooth 60fps gameplay on mobile devices
 
 ### **Custom Domain (Optional)**
 1. Add `CNAME` file with your domain
-2. Configure DNS CNAME record
+2. Configure DNS CNAME record  
 3. Enable HTTPS in GitHub Pages settings
+4. Test mobile performance on custom domain
 
 ## 🤝 **Contributing**
 

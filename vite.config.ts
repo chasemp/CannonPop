@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/BustAGroove/', // GitHub Pages base path
+  base: '/', // Root path for custom domain deployment
   plugins: [svelte()],
   build: {
     rollupOptions: {

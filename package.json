@@ -11,22 +11,22 @@
     "build:fresh": "npm run cache:clear && npm run build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-    
     "cache:clear": "rm -rf node_modules/.vite && rm -rf dist",
     "restart": "pkill -f 'vite|http.server' || true && npm run dev:fresh",
-    
     "serve:static": "python3 -m http.server 8081",
     "validate:milestone": "open index.html",
-    
     "test:timeout": "timeout 30s npm run test:run || echo 'Tests timed out after 30s'",
     "test:run": "echo 'Test runner not yet configured'",
-    
     "version:update": "node scripts/update-version.cjs",
-    "deploy:bust": "npm run version:update && git add -A && git commit -m 'Cache bust: $(date)' && git push"
+    "deploy:bust": "npm run version:update && git add -A && git commit -m 'Cache bust: $(date)' && git push",
+    "deploy:mobile": "npm run build && git add . && git commit -m 'Deploy: Mobile-optimized PWA $(date)' && git push origin main",
+    "deploy:script": "./scripts/deploy.sh",
+    "deploy:github-pages": "./scripts/deploy-mobile.sh"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.0",
     "@tsconfig/svelte": "^5.0.5",
+    "@types/node": "^24.6.0",
     "svelte": "^5.39.4",
     "svelte-check": "^4.3.1",
     "typescript": "~5.8.3",

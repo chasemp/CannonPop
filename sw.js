@@ -9,16 +9,21 @@ const STATIC_CACHE_NAME = 'bustagroove-static-v1';
 
 // Files to cache immediately on install
 const PRECACHE_URLS = [
-  '/BustAGroove/',
-  '/BustAGroove/index.html',
-  '/BustAGroove/game.html',
-  '/BustAGroove/manifest.json',
-  '/BustAGroove/css/styles.css',
-  '/BustAGroove/css/game.css',
-  '/BustAGroove/js/game.js',
-  '/BustAGroove/src/main.ts',
+  '/',
+  '/index.html',
+  '/game.html',
+  '/settings.html',
+  '/manifest.json',
+  '/css/styles.css',
+  '/css/game.css',
+  '/js/game.js',
+  '/js/analytics.js',
+  '/src/main.ts',
   // Local libraries (self-contained, no external dependencies)
-  '/BustAGroove/public/libs/phaser.min.js'
+  '/public/libs/phaser.min.js',
+  // PWA assets
+  '/public/icons/icon-192x192.svg',
+  '/public/icons/icon-512x512.svg'
 ];
 
 // Install event - precache essential files
@@ -114,7 +119,7 @@ self.addEventListener('fetch', (event) => {
             
             // Return offline fallback for HTML requests
             if (request.headers.get('accept')?.includes('text/html')) {
-              return caches.match('/BustAGroove/index.html');
+              return caches.match('/index.html');
             }
             
             throw error;
@@ -159,8 +164,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New BustAGroove update available!',
-    icon: '/BustAGroove/public/icons/icon-192x192.png',
-    badge: '/BustAGroove/public/icons/icon-96x96.png',
+    icon: '/public/icons/icon-192x192.svg',
+    badge: '/public/icons/icon-96x96.svg',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -170,12 +175,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Play Now',
-        icon: '/BustAGroove/public/icons/icon-96x96.png'
+        icon: '/public/icons/icon-96x96.svg'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: '/BustAGroove/public/icons/icon-96x96.png'
+        icon: '/public/icons/icon-96x96.svg'
       }
     ]
   };
