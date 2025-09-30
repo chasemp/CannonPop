@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#2c1810" />
+    <meta name="description" content="BustAGroove - Mobile-first bubble shooter PWA" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BustAGroove" />
+    
+    <!-- Mobile-first CSS with cache busting -->
+    <link rel="stylesheet" href="./css/styles.css?v=2025.09.26.2311" />
+    
+    <title>BustAGroove - Bubble Shooter PWA</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    
+    <!-- Core Svelte app with cache busting -->
+    <script type="module" src="/src/main.ts?v=2025.09.27.0000"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => console.log('✅ SW registered'))
+            .catch(error => console.log('❌ SW registration failed:', error));
+        });
+      }
+    </script>
+  </body>
+</html>
