@@ -1,0 +1,115 @@
+{
+  "name": "BustAGroove - Bubble Shooter PWA",
+  "short_name": "BustAGroove",
+  "description": "Mobile-first bubble shooter game with offline capabilities",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2c1810",
+  "theme_color": "#8d6e63",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/public/icons/icon-72x72.svg",
+      "sizes": "72x72",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-96x96.svg",
+      "sizes": "96x96",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-128x128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-144x144.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-152x152.svg",
+      "sizes": "152x152",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-384x384.svg",
+      "sizes": "384x384",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/public/screenshots/game-mobile.svg",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "BustAGroove gameplay on mobile"
+    },
+    {
+      "src": "/public/screenshots/game-desktop.svg",
+      "sizes": "1200x800",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "BustAGroove gameplay on desktop"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Game",
+      "short_name": "New Game",
+      "description": "Start a new bubble shooter game",
+      "url": "/?action=new-game",
+      "icons": [
+        {
+          "src": "/public/icons/icon-96x96.svg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "High Scores",
+      "short_name": "Scores",
+      "description": "View your high scores",
+      "url": "/?tab=scores",
+      "icons": [
+        {
+          "src": "/public/icons/icon-96x96.svg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "Fast",
+    "Simple"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}

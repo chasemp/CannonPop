@@ -1,0 +1,24 @@
+<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d2691e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b4513;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="balloon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff4757;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="36" cy="36" r="32" fill="url(#bg)" stroke="#654321" stroke-width="2"/>
+  
+  <!-- Balloon -->
+  <circle cx="36" cy="30" r="18" fill="url(#balloon)" stroke="#ff4444" stroke-width="2"/>
+  
+  <!-- Balloon string -->
+  <line x1="36" y1="48" x2="36" y2="64" stroke="#654321" stroke-width="3"/>
+  
+  <!-- Cannon base -->
+  <rect x="24" y="50" width="24" height="6" fill="#8b4513" stroke="#654321" stroke-width="1"/>
+</svg>
