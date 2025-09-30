@@ -19,16 +19,38 @@
   // Tab Management
   const tabs = [
     { id: 'game', label: 'Game', icon: '🎮' },
-    { id: 'scores', label: 'Scores', icon: '🏆' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
+    { id: 'scores', label: 'Scores', icon: '🏆' }
   ];
   
-  // Dual Event Handling for Mobile + Desktop
+  // Enhanced Dual Event Handling for Mobile + Desktop
   function addDualEventListener(element: HTMLElement, handler: () => void) {
-    element.addEventListener('click', handler);  // Desktop
-    element.addEventListener('touchstart', (e) => {  // Mobile
+    // Desktop mouse events
+    element.addEventListener('click', handler);
+    
+    // Enhanced mobile touch events with better UX
+    element.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      
+      // Add visual feedback for touch
+      element.style.transform = 'scale(0.95)';
+      element.style.transition = 'transform 0.1s ease';
+      
+      // Haptic feedback if supported
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      
       handler();
+    }, { passive: false });
+    
+    // Touch end cleanup
+    element.addEventListener('touchend', () => {
+      element.style.transform = 'scale(1)';
+    });
+    
+    // Prevent double-tap zoom on mobile
+    element.addEventListener('touchmove', (e) => {
+      e.preventDefault();
     }, { passive: false });
   }
   
@@ -74,27 +96,104 @@
     }
   }
   
-  // Initialize PWA
+  // Initialize Mobile-First PWA
   onMount(() => {
+    console.log('🎈 Initializing BustAGroove Mobile PWA...');
+    
     // Listen for game messages
     window.addEventListener('message', handleGameMessage);
+    
+    // Enhanced mobile viewport handling
+    setupMobileViewport();
     
     // Set up dual event listeners for all interactive elements
     const interactiveElements = document.querySelectorAll('.nav-tab, .btn');
     interactiveElements.forEach(element => {
       if (element instanceof HTMLElement) {
-        // Touch optimization
+        // Enhanced mobile touch optimization
         element.style.touchAction = 'manipulation';
         element.style.userSelect = 'none';
         element.style.webkitUserSelect = 'none';
         element.style.webkitTouchCallout = 'none';
+        element.style.webkitTapHighlightColor = 'transparent';
+        
+        // Add mobile-friendly touch targets (minimum 44px)
+        const rect = element.getBoundingClientRect();
+        if (rect.height < 44 || rect.width < 44) {
+          element.style.minHeight = '44px';
+          element.style.minWidth = '44px';
+          element.style.display = 'flex';
+          element.style.alignItems = 'center';
+          element.style.justifyContent = 'center';
+        }
       }
     });
     
+    // Initialize demo data
+    initializeDemoData();
+    
+    // Mobile-specific optimizations
+    if (isMobileDevice()) {
+      document.body.classList.add('mobile-device');
+      
+      // Prevent zoom on input focus (mobile Safari)
+      const viewport = document.querySelector('meta[name=viewport]');
+      if (viewport) {
+        viewport.setAttribute('content', 
+          'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+        );
+      }
+      
+      // Add mobile-specific event listeners
+      window.addEventListener('orientationchange', handleOrientationChange);
+      window.addEventListener('resize', handleMobileResize);
+    }
+    
     return () => {
       window.removeEventListener('message', handleGameMessage);
+      if (isMobileDevice()) {
+        window.removeEventListener('orientationchange', handleOrientationChange);
+        window.removeEventListener('resize', handleMobileResize);
+      }
     };
   });
+  
+  // Mobile device detection
+  function isMobileDevice(): boolean {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  }
+  
+  // Setup mobile viewport optimizations
+  function setupMobileViewport() {
+    // Prevent pull-to-refresh on mobile
+    document.body.style.overscrollBehavior = 'none';
+    
+    // Optimize for mobile scrolling
+    document.documentElement.style.webkitTextSizeAdjust = '100%';
+    document.documentElement.style.textSizeAdjust = '100%';
+  }
+  
+  // Handle orientation changes on mobile
+  function handleOrientationChange() {
+    // Force layout recalculation after orientation change
+    setTimeout(() => {
+      if (gameIframe) {
+        sendMessageToGame({ action: 'resize' });
+      }
+    }, 100);
+  }
+  
+  // Handle mobile resize events
+  function handleMobileResize() {
+    // Debounced resize handling for mobile
+    clearTimeout(window.mobileResizeTimeout);
+    window.mobileResizeTimeout = setTimeout(() => {
+      if (gameIframe) {
+        sendMessageToGame({ action: 'resize' });
+      }
+    }, 250);
+  }
   
   // Demo Data Lifecycle Management
   function initializeDemoData() {
@@ -121,15 +220,30 @@
 </script>
 
 <div class="app-container">
-  <!-- Navigation -->
-  <nav class="nav-container">
-    <div class="nav-header">
-      <h1 class="nav-title">🎮 BustAGroove</h1>
-      <div class="score-display">
-        High Score: {highScore.toLocaleString()}
-      </div>
+  <!-- Header with Logo and Controls (Blockdoku Pattern) -->
+  <header class="header">
+    <div class="logo-container">
+      <div class="app-logo">🎈</div>
+      <h1>BustAGroove</h1>
+      <button class="btn btn-primary new-game-btn" on:click={() => sendMessageToGame({ action: 'restart' })}>
+        New Game
+      </button>
     </div>
-    
+    <div class="controls">
+      <div class="score-display">
+        High: {highScore.toLocaleString()}
+      </div>
+      <button class="btn btn-secondary" on:click={() => sendMessageToGame({ action: 'pause' })}>
+        ⏸️
+      </button>
+        <button class="btn btn-secondary" on:click={() => window.location.href = 'settings.html'}>
+          ⚙️
+        </button>
+    </div>
+  </header>
+  
+  <!-- Tab Navigation (Mobile-First) -->
+  <nav class="nav-container">
     <div class="nav-tabs">
       {#each tabs as tab}
         <button 
@@ -158,7 +272,7 @@
         <iframe 
           bind:this={gameIframe}
           class="game-iframe"
-          src="./game.html"
+          src="/BustAGroove/game.html"
           title="BustAGroove Game"
           on:load={() => gameLoaded = true}
         ></iframe>
@@ -191,47 +305,6 @@
       </button>
     </div>
     
-    <!-- Settings Tab -->
-    <div class="tab-content {currentTab === 'settings' ? 'active' : ''}">
-      <h2>⚙️ Settings</h2>
-      <div class="settings-grid">
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" checked />
-            🔊 Sound Effects
-          </label>
-        </div>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" checked />
-            🎵 Background Music
-          </label>
-        </div>
-        
-        <div class="setting-item">
-          <label for="difficulty">🎯 Difficulty</label>
-          <select id="difficulty">
-            <option value="easy">Easy</option>
-            <option value="normal" selected>Normal</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="settings-actions">
-        <button class="btn btn-warning" on:click={() => {
-          localStorage.clear();
-          location.reload();
-        }}>
-          🗑️ Clear All Data
-        </button>
-        
-        <button class="btn btn-accent" on:click={() => switchTab('game')}>
-          🎮 Back to Game
-        </button>
-      </div>
-    </div>
   </main>
 </div>
 

@@ -4,7 +4,7 @@
  * Based on PWA lessons learned from MealPlanner
  */
 
-const CACHE_NAME = 'bustagroove-v2025.09.26.2311';
+const CACHE_NAME = 'bustagroove-v2025.09.27.0045';
 const STATIC_CACHE_NAME = 'bustagroove-static-v1';
 
 // Files to cache immediately on install
@@ -17,8 +17,8 @@ const PRECACHE_URLS = [
   '/BustAGroove/css/game.css',
   '/BustAGroove/js/game.js',
   '/BustAGroove/src/main.ts',
-  // CDN resources
-  'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js'
+  // Local libraries (self-contained, no external dependencies)
+  '/BustAGroove/public/libs/phaser.min.js'
 ];
 
 // Install event - precache essential files
@@ -192,7 +192,7 @@ self.addEventListener('push', (event) => {
  */
 function isStaticAsset(url) {
   const staticExtensions = ['.html', '.css', '.js', '.ts', '.json', '.png', '.jpg', '.svg', '.ico'];
-  return staticExtensions.some(ext => url.includes(ext)) || url.includes('cdn.jsdelivr.net');
+  return staticExtensions.some(ext => url.includes(ext));
 }
 
 /**

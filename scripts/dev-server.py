@@ -127,6 +127,6 @@ if __name__ == "__main__":
     # Handle Ctrl+C gracefully
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Start development server
-    server = DevServer(port=8080)
+    # Start development server on different port to avoid conflicts
+    server = DevServer(port=8081)
     server.run()

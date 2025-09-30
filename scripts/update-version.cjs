@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Generate timestamp-based version (YYYY.MM.DD.HHMM format)
+// Avoid ESBuild loader conflicts by ensuring version doesn't end in 0000
 function generateVersion() {
     const now = new Date();
     const year = now.getFullYear();
@@ -17,7 +18,10 @@ function generateVersion() {
     const hour = String(now.getHours()).padStart(2, '0');
     const minute = String(now.getMinutes()).padStart(2, '0');
     
-    return `${year}.${month}.${day}.${hour}${minute}`;
+    const baseVersion = `${year}${month}${day}${hour}${minute}`;
+    
+    // Add a suffix to avoid ESBuild conflicts with loader values like "0000"
+    return `v${baseVersion}`;
 }
 
 // Update version in HTML files
@@ -30,21 +34,30 @@ function updateVersionInFile(filePath, newVersion) {
     let content = fs.readFileSync(filePath, 'utf8');
     let updated = false;
     
-    // Update CSS version parameters
+    // Update CSS version parameters (supports both old and new formats)
     content = content.replace(
-        /\.css\?v=[\d.]+/g,
+        /\.css\?v=[v\d.]+/g,
         (match) => {
             updated = true;
             return `.css?v=${newVersion}`;
         }
     );
     
-    // Update JS version parameters
+    // Update JS version parameters (supports both old and new formats)
     content = content.replace(
-        /\.js\?v=[\d.]+/g,
+        /\.js\?v=[v\d.]+/g,
         (match) => {
             updated = true;
             return `.js?v=${newVersion}`;
+        }
+    );
+    
+    // Update TS version parameters for Vite dev server
+    content = content.replace(
+        /\.ts\?v=[v\d.]+/g,
+        (match) => {
+            updated = true;
+            return `.ts?v=${newVersion}`;
         }
     );
     
