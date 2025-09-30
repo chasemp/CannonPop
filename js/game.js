@@ -61,6 +61,15 @@ let gameState = {
     shotsFired: 0,
     shotsUntilCeilingDrop: 6,
     
+    // Power-ups and special features
+    powerUps: {
+        bomb: 0,
+        rainbow: 0,
+        laser: 0
+    },
+    specialBubbles: [],
+    activePowerUp: null,
+    
     // Game objects
     grid: [],
     currentBubble: null,
@@ -79,6 +88,7 @@ let gameState = {
     levelText: null,
     shotsText: null,
     stateText: null,
+    powerUpUI: null,
     menuContainer: null,
     gameOverContainer: null,
     
@@ -230,6 +240,103 @@ class CarnivalAudioManager {
         return sounds;
     }
     
+    // Background music system with multiple tracks
+    createBackgroundMusic() {
+        if (!this.audioContext || !this.musicEnabled) return null;
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        const reverb = this.audioContext.createConvolver();
+        
+        oscillator.connect(filter);
+        filter.connect(reverb);
+        reverb.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // Create a more complex ambient melody
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(220, this.audioContext.currentTime); // A3
+        
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, this.audioContext.currentTime);
+        filter.Q.setValueAtTime(1, this.audioContext.currentTime);
+        
+        // Add subtle reverb
+        const reverbBuffer = this.createReverbBuffer();
+        reverb.buffer = reverbBuffer;
+        
+        gainNode.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.08, this.audioContext.currentTime);
+        
+        oscillator.start();
+        
+        return { oscillator, gainNode, filter, reverb };
+    }
+    
+    // Create reverb buffer for ambient music
+    createReverbBuffer() {
+        const length = this.audioContext.sampleRate * 2; // 2 seconds
+        const buffer = this.audioContext.createBuffer(2, length, this.audioContext.sampleRate);
+        
+        for (let channel = 0; channel < 2; channel++) {
+            const channelData = buffer.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+            }
+        }
+        
+        return buffer;
+    }
+    
+    // Create layered background music
+    createLayeredMusic() {
+        if (!this.audioContext || !this.musicEnabled) return null;
+        
+        const layers = [];
+        
+        // Bass layer
+        const bassOsc = this.audioContext.createOscillator();
+        const bassGain = this.audioContext.createGain();
+        bassOsc.type = 'sine';
+        bassOsc.frequency.setValueAtTime(110, this.audioContext.currentTime); // A2
+        bassGain.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.05, this.audioContext.currentTime);
+        bassOsc.connect(bassGain);
+        bassGain.connect(this.audioContext.destination);
+        bassOsc.start();
+        layers.push({ oscillator: bassOsc, gainNode: bassGain });
+        
+        // Melody layer
+        const melodyOsc = this.audioContext.createOscillator();
+        const melodyGain = this.audioContext.createGain();
+        melodyOsc.type = 'triangle';
+        melodyOsc.frequency.setValueAtTime(440, this.audioContext.currentTime); // A4
+        melodyGain.gain.setValueAtTime(this.musicVolume * this.masterVolume * 0.03, this.audioContext.currentTime);
+        melodyOsc.connect(melodyGain);
+        melodyGain.connect(this.audioContext.destination);
+        melodyOsc.start();
+        layers.push({ oscillator: melodyOsc, gainNode: melodyGain });
+        
+        return layers;
+    }
+    
+    playBackgroundMusic() {
+        if (!this.musicEnabled) return;
+        this.resumeAudio();
+        
+        if (this.backgroundMusic) {
+            this.stopBackgroundMusic();
+        }
+        
+        this.backgroundMusic = this.createBackgroundMusic();
+    }
+    
+    stopBackgroundMusic() {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.oscillator.stop();
+            this.backgroundMusic = null;
+        }
+    }
+    
     // Public methods for playing sounds
     playCannonFire() {
         if (!this.sfxEnabled) return;
@@ -253,6 +360,117 @@ class CarnivalAudioManager {
         if (!this.sfxEnabled) return;
         this.resumeAudio();
         this.createSuccessJingleSound();
+    }
+    
+    // Special bubble sound effects
+    playBombSound() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(20, this.audioContext.currentTime + 0.5);
+        
+        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(this.sfxVolume * this.masterVolume * 0.3, this.audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+        
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.5);
+    }
+    
+    playRainbowSound() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+        const sounds = [];
+        
+        notes.forEach((freq, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+            
+            const startTime = this.audioContext.currentTime + (index * 0.05);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(this.sfxVolume * this.masterVolume * 0.2, startTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 0.4);
+            
+            sounds.push({ oscillator, gainNode });
+        });
+        
+        return sounds;
+    }
+    
+    playLaserSound() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        oscillator.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(400, this.audioContext.currentTime);
+        
+        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(this.sfxVolume * this.masterVolume * 0.4, this.audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+        
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.2);
+    }
+    
+    playLevelUpSound() {
+        if (!this.sfxEnabled) return;
+        this.resumeAudio();
+        
+        const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99]; // C4, E4, G4, C5, E5, G5
+        const sounds = [];
+        
+        notes.forEach((freq, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+            
+            const startTime = this.audioContext.currentTime + (index * 0.08);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(this.sfxVolume * this.masterVolume * 0.3, startTime + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + 0.3);
+            
+            sounds.push({ oscillator, gainNode });
+        });
+        
+        return sounds;
     }
     
     // Settings management
@@ -301,6 +519,34 @@ const GRID_HEIGHT = 12;
 const BUBBLE_RADIUS = 20;
 const BUBBLE_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 
+// Special bubble types
+const SPECIAL_BUBBLE_TYPES = {
+    BOMB: 'bomb',
+    RAINBOW: 'rainbow',
+    LASER: 'laser',
+    MULTI: 'multi'
+};
+
+// Power-up effects
+const POWER_UP_EFFECTS = {
+    BOMB: {
+        radius: 3,
+        damage: 50,
+        color: 0xff0000,
+        sound: 'bomb'
+    },
+    RAINBOW: {
+        matchesAny: true,
+        color: 0xffffff,
+        sound: 'rainbow'
+    },
+    LASER: {
+        pierce: true,
+        color: 0x00ff00,
+        sound: 'laser'
+    }
+};
+
 /**
  * Phaser Preload Function
  * Load game assets
@@ -314,6 +560,9 @@ function preload() {
         createBalloonTexture.call(this, color);
     });
     
+    // Create special bubble textures
+    createSpecialBubbleTextures.call(this);
+    
     console.log('🎮 Game assets loaded');
 }
 
@@ -326,6 +575,24 @@ function create() {
     
     // Initialize audio system
     audioManager = new CarnivalAudioManager();
+    
+    // Initialize analytics
+    if (window.GameAnalytics) {
+        analytics = new window.GameAnalytics();
+        console.log('📊 Analytics initialized');
+    }
+    
+    // Initialize social manager
+    if (window.SocialManager) {
+        socialManager = new window.SocialManager();
+        console.log('👥 Social manager initialized');
+    }
+    
+    // Initialize performance manager
+    if (window.PerformanceManager) {
+        performanceManager = new window.PerformanceManager();
+        console.log('⚡ Performance manager initialized');
+    }
     audioManager.loadSettings();
     
     // Create bubble group for physics BEFORE initializing grid
@@ -446,10 +713,22 @@ function enterState(state, data) {
             
         case GAME_STATES.PLAYING:
             startGameplay.call(this, data);
+            // Start background music when playing
+            if (audioManager) {
+                audioManager.playBackgroundMusic();
+            }
+            // Track game start
+            if (analytics) {
+                analytics.trackGameStart();
+            }
             break;
             
         case GAME_STATES.PAUSED:
             showPauseOverlay.call(this);
+            // Pause background music
+            if (audioManager) {
+                audioManager.stopBackgroundMusic();
+            }
             break;
             
         case GAME_STATES.GAME_OVER:
@@ -458,10 +737,42 @@ function enterState(state, data) {
                 saveHighScore(gameState.score, gameState.level);
             }
             showGameOver.call(this, data);
+            // Stop background music
+            if (audioManager) {
+                audioManager.stopBackgroundMusic();
+            }
+            // Track game end
+            if (analytics) {
+                analytics.trackGameEnd(gameState.score, gameState.level, 'game_over');
+            }
+            
+            // Check achievements and add to leaderboard
+            if (socialManager) {
+                const gameStats = {
+                    score: gameState.score,
+                    level: gameState.level,
+                    shotsFired: gameState.shotsFired,
+                    bubblesCleared: gameState.bubblesCleared,
+                    specialBubblesUsed: gameState.specialBubblesUsed || 0,
+                    powerUpsActivated: gameState.powerUpsActivated || 0,
+                    accuracy: socialManager.calculateAccuracy ? socialManager.calculateAccuracy() : 0
+                };
+                
+                socialManager.checkAchievements(gameStats);
+                socialManager.addToLeaderboard(gameState.score, gameState.level);
+            }
             break;
             
         case GAME_STATES.LEVEL_COMPLETE:
             showLevelComplete.call(this, data);
+            // Play level complete sound
+            if (audioManager) {
+                audioManager.playLevelUpSound();
+            }
+            // Track level complete
+            if (analytics) {
+                analytics.trackLevelComplete(gameState.level, gameState.score, Date.now() - gameState.levelStartTime);
+            }
             break;
     }
     
@@ -533,7 +844,11 @@ function populateInitialGrid() {
                 const color = pattern[row][col];
                 const pos = gridToWorld(col, row);
                 
-                const bubble = this.physics.add.sprite(pos.x, pos.y, color + '_bubble');
+                let textureName = color + '_bubble';
+                if (isSpecialBubble(color)) {
+                    textureName = getSpecialBubbleTexture(color);
+                }
+                const bubble = this.physics.add.sprite(pos.x, pos.y, textureName);
                 bubble.setCircle(BUBBLE_RADIUS);
                 bubble.setImmovable(true);
                 bubble.color = color;
@@ -781,13 +1096,30 @@ function shootBubble(targetX, targetY) {
     
     // Add collision with other bubbles
     this.physics.add.collider(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
-        // Handle bubble collision - snap to grid
-        snapBubbleToGrid.call(this, bubble, target);
+        // Handle special bubble effects before normal collision
+        if (isSpecialBubble(bubble.bubbleColor)) {
+            handleSpecialBubbleEffect.call(this, bubble, target);
+        } else {
+            // Handle normal bubble collision - snap to grid
+            snapBubbleToGrid.call(this, bubble, target);
+        }
+    });
+    
+    // Add wall bounce sound
+    gameState.currentBubble.on('worldbounds', () => {
+        if (audioManager) {
+            audioManager.playBubbleBounce();
+        }
     });
     
     // Play cannon fire sound
     if (audioManager) {
         audioManager.playCannonFire();
+    }
+    
+    // Track bubble shot
+    if (analytics) {
+        analytics.trackBubbleShot(gameState.currentAimAngle, 1.0);
     }
     
     // Trigger cannon recoil animation
@@ -916,10 +1248,15 @@ function checkForMatches(col, row) {
             }
         });
         
-        // Play success sound
-        if (audioManager) {
-            audioManager.playSuccessJingle();
-        }
+    // Play success sound
+    if (audioManager) {
+        audioManager.playSuccessJingle();
+    }
+    
+    // Add bubble pop sound for each bubble
+    if (audioManager) {
+        audioManager.playBubblePop();
+    }
     }
 }
 
@@ -962,12 +1299,84 @@ function createBalloonTexture(color) {
 }
 
 /**
+ * Create special bubble textures for power-ups
+ */
+function createSpecialBubbleTextures() {
+    const graphics = this.add.graphics();
+    const balloonRadius = BUBBLE_RADIUS;
+    const stringLength = 8;
+    
+    // Bomb bubble
+    graphics.fillStyle(0xff0000, 1);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 2, balloonRadius * 2.1);
+    graphics.fillStyle(0xffffff, 0.8);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 1.2, balloonRadius * 1.2);
+    graphics.fillStyle(0xff0000, 1);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 0.6, balloonRadius * 0.6);
+    // Add string
+    graphics.lineStyle(1, 0x333333, 0.8);
+    graphics.beginPath();
+    graphics.moveTo(balloonRadius, balloonRadius * 2 - 2);
+    graphics.lineTo(balloonRadius + 1, balloonRadius * 2 + stringLength);
+    graphics.strokePath();
+    graphics.generateTexture('bomb_bubble', balloonRadius * 2 + 4, balloonRadius * 2 + stringLength + 4);
+    
+    // Rainbow bubble
+    graphics.clear();
+    graphics.fillStyle(0xffffff, 1);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 2, balloonRadius * 2.1);
+    // Add rainbow stripes
+    const colors = [0xff0000, 0xff8000, 0xffff00, 0x00ff00, 0x0080ff, 0x8000ff];
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI * 2) / 6;
+        const x = balloonRadius + Math.cos(angle) * balloonRadius * 0.6;
+        const y = balloonRadius - 2 + Math.sin(angle) * balloonRadius * 0.6;
+        graphics.fillStyle(colors[i], 0.8);
+        graphics.fillCircle(x, y, balloonRadius * 0.15);
+    }
+    // Add string
+    graphics.lineStyle(1, 0x333333, 0.8);
+    graphics.beginPath();
+    graphics.moveTo(balloonRadius, balloonRadius * 2 - 2);
+    graphics.lineTo(balloonRadius + 1, balloonRadius * 2 + stringLength);
+    graphics.strokePath();
+    graphics.generateTexture('rainbow_bubble', balloonRadius * 2 + 4, balloonRadius * 2 + stringLength + 4);
+    
+    // Laser bubble
+    graphics.clear();
+    graphics.fillStyle(0x00ff00, 1);
+    graphics.fillEllipse(balloonRadius, balloonRadius - 2, balloonRadius * 2, balloonRadius * 2.1);
+    graphics.fillStyle(0xffffff, 0.9);
+    graphics.fillRect(balloonRadius - 2, balloonRadius - balloonRadius, 4, balloonRadius * 2);
+    graphics.fillRect(balloonRadius - balloonRadius, balloonRadius - 2, balloonRadius * 2, 4);
+    // Add string
+    graphics.lineStyle(1, 0x333333, 0.8);
+    graphics.beginPath();
+    graphics.moveTo(balloonRadius, balloonRadius * 2 - 2);
+    graphics.lineTo(balloonRadius + 1, balloonRadius * 2 + stringLength);
+    graphics.strokePath();
+    graphics.generateTexture('laser_bubble', balloonRadius * 2 + 4, balloonRadius * 2 + stringLength + 4);
+    
+    graphics.destroy();
+}
+
+/**
  * Main game update loop
  */
 function update() {
+    // Performance monitoring
+    if (performanceManager) {
+        performanceManager.startProfile('gameUpdate');
+    }
+    
     // Update glow effects for any moving bubbles
     if (gameState.currentBubble && gameState.currentBubble.updateGlow) {
         gameState.currentBubble.updateGlow();
+    }
+    
+    // End performance monitoring
+    if (performanceManager) {
+        performanceManager.endProfile('gameUpdate', performance.now());
     }
 }
 
@@ -985,7 +1394,11 @@ function createNewBubble() {
     const launcherX = GAME_CONFIG.width / 2;
     const launcherY = GAME_CONFIG.height - 60;
     
-    gameState.currentBubble = this.physics.add.sprite(launcherX, launcherY - 40, color + '_bubble');
+    let textureName = color + '_bubble';
+    if (isSpecialBubble(color)) {
+        textureName = getSpecialBubbleTexture(color);
+    }
+    gameState.currentBubble = this.physics.add.sprite(launcherX, launcherY - 40, textureName);
     gameState.currentBubble.setCircle(BUBBLE_RADIUS);
     gameState.currentBubble.color = color;
     
@@ -1005,7 +1418,11 @@ function createNextBubble() {
     const previewX = GAME_CONFIG.width - 60;
     const previewY = GAME_CONFIG.height - 60;
     
-    gameState.nextBubble = this.add.sprite(previewX, previewY, color + '_bubble');
+    let textureName = color + '_bubble';
+    if (isSpecialBubble(color)) {
+        textureName = getSpecialBubbleTexture(color);
+    }
+    gameState.nextBubble = this.add.sprite(previewX, previewY, textureName);
     gameState.nextBubble.setScale(0.7);
     gameState.nextBubble.color = color;
 }
@@ -1327,6 +1744,11 @@ function checkForFloatingBubbles() {
         });
         
         console.log(`🎈 Removed ${floatingBubbles.length} floating bubbles`);
+        
+        // Play floating bubble sound
+        if (audioManager) {
+            audioManager.playBubblePop();
+        }
     }
 }
 
@@ -1995,7 +2417,11 @@ function populateLevelGrid(config) {
                 const color = colors[Math.floor(Math.random() * colors.length)];
                 const pos = gridToWorld(col, row);
                 
-                const bubble = this.physics.add.sprite(pos.x, pos.y, color + '_bubble');
+                let textureName = color + '_bubble';
+                if (isSpecialBubble(color)) {
+                    textureName = getSpecialBubbleTexture(color);
+                }
+                const bubble = this.physics.add.sprite(pos.x, pos.y, textureName);
                 bubble.setCircle(BUBBLE_RADIUS);
                 bubble.setImmovable(true);
                 bubble.color = color;
@@ -2246,6 +2672,291 @@ function getRandomBubbleColor() {
 }
 
 /**
+ * Generate next bubble color with special bubble chance
+ * @returns {string} Random bubble color or special type
+ */
+function getNextBubbleColor() {
+    // 10% chance for special bubble
+    if (Math.random() < 0.1) {
+        const specialTypes = Object.values(SPECIAL_BUBBLE_TYPES);
+        return specialTypes[Math.floor(Math.random() * specialTypes.length)];
+    }
+    return BUBBLE_COLORS[Math.floor(Math.random() * BUBBLE_COLORS.length)];
+}
+
+/**
+ * Check if bubble is special type
+ * @param {string} color - Bubble color/type
+ * @returns {boolean} True if special bubble
+ */
+function isSpecialBubble(color) {
+    return Object.values(SPECIAL_BUBBLE_TYPES).includes(color);
+}
+
+/**
+ * Get special bubble texture name
+ * @param {string} type - Special bubble type
+ * @returns {string} Texture name
+ */
+function getSpecialBubbleTexture(type) {
+    return `${type}_bubble`;
+}
+
+/**
+ * Handle special bubble effects
+ * @param {Phaser.GameObjects.Sprite} bubble - The special bubble
+ * @param {Phaser.GameObjects.Sprite} target - The target bubble
+ */
+function handleSpecialBubbleEffect(bubble, target) {
+    const bubbleType = bubble.bubbleColor;
+    
+    switch (bubbleType) {
+        case SPECIAL_BUBBLE_TYPES.BOMB:
+            handleBombEffect.call(this, bubble, target);
+            break;
+        case SPECIAL_BUBBLE_TYPES.RAINBOW:
+            handleRainbowEffect.call(this, bubble, target);
+            break;
+        case SPECIAL_BUBBLE_TYPES.LASER:
+            handleLaserEffect.call(this, bubble, target);
+            break;
+        default:
+            // Fallback to normal collision
+            snapBubbleToGrid.call(this, bubble, target);
+    }
+}
+
+/**
+ * Handle bomb bubble effect
+ * @param {Phaser.GameObjects.Sprite} bubble - The bomb bubble
+ * @param {Phaser.GameObjects.Sprite} target - The target bubble
+ */
+function handleBombEffect(bubble, target) {
+    const bombRadius = POWER_UP_EFFECTS.BOMB.radius;
+    const bombX = bubble.x;
+    const bombY = bubble.y;
+    
+    // Create explosion effect
+    createExplosionEffect.call(this, bombX, bombY, POWER_UP_EFFECTS.BOMB.color);
+    
+    // Find all bubbles within explosion radius
+    const bubblesToDestroy = [];
+    for (let r = 0; r < GRID_HEIGHT; r++) {
+        for (let c = 0; c < GRID_WIDTH; c++) {
+            if (gameState.grid[r][c]) {
+                const bubble = gameState.grid[r][c];
+                const distance = Math.sqrt(
+                    Math.pow(bubble.x - bombX, 2) + Math.pow(bubble.y - bombY, 2)
+                );
+                
+                if (distance <= bombRadius * BUBBLE_RADIUS * 2) {
+                    bubblesToDestroy.push({ row: r, col: c, bubble: bubble });
+                }
+            }
+        }
+    }
+    
+    // Destroy bubbles in explosion radius
+    bubblesToDestroy.forEach(({ row, col, bubble }) => {
+        if (bubble && bubble.sprite) {
+            bubble.sprite.destroy();
+            gameState.grid[row][col] = null;
+            updateScore(50); // Bonus points for bomb
+        }
+    });
+    
+    // Play bomb sound
+    if (audioManager) {
+        audioManager.playBombSound();
+    }
+    
+    // Track special bubble usage
+    if (analytics) {
+        analytics.trackSpecialBubbleUsed('bomb', 'explosion');
+    }
+    
+    // Remove the bomb bubble
+    bubble.destroy();
+    
+    // Check for floating bubbles after explosion
+    setTimeout(() => {
+        removeFloatingBubbles.call(this);
+    }, 100);
+}
+
+/**
+ * Handle rainbow bubble effect
+ * @param {Phaser.GameObjects.Sprite} bubble - The rainbow bubble
+ * @param {Phaser.GameObjects.Sprite} target - The target bubble
+ */
+function handleRainbowEffect(bubble, target) {
+    // Rainbow bubble matches any color
+    const targetColor = target.bubbleColor;
+    
+    // Find all bubbles of the target color
+    const matchingBubbles = [];
+    for (let r = 0; r < GRID_HEIGHT; r++) {
+        for (let c = 0; c < GRID_WIDTH; c++) {
+            if (gameState.grid[r][c] && gameState.grid[r][c].bubbleColor === targetColor) {
+                matchingBubbles.push({ row: r, col: c, bubble: gameState.grid[r][c] });
+            }
+        }
+    }
+    
+    // Destroy all matching bubbles
+    matchingBubbles.forEach(({ row, col, bubble }) => {
+        if (bubble && bubble.sprite) {
+            bubble.sprite.destroy();
+            gameState.grid[row][col] = null;
+            updateScore(30); // Bonus points for rainbow
+        }
+    });
+    
+    // Play rainbow sound
+    if (audioManager) {
+        audioManager.playRainbowSound();
+    }
+    
+    // Track special bubble usage
+    if (analytics) {
+        analytics.trackSpecialBubbleUsed('rainbow', 'color_match');
+    }
+    
+    // Remove the rainbow bubble
+    bubble.destroy();
+    
+    // Check for floating bubbles
+    setTimeout(() => {
+        removeFloatingBubbles.call(this);
+    }, 100);
+}
+
+/**
+ * Handle laser bubble effect
+ * @param {Phaser.GameObjects.Sprite} bubble - The laser bubble
+ * @param {Phaser.GameObjects.Sprite} target - The target bubble
+ */
+function handleLaserEffect(bubble, target) {
+    // Laser pierces through bubbles in a line
+    const laserAngle = bubble.rotation;
+    const laserX = bubble.x;
+    const laserY = bubble.y;
+    
+    // Create laser beam effect
+    createLaserBeamEffect.call(this, laserX, laserY, laserAngle);
+    
+    // Find bubbles in laser path
+    const bubblesToDestroy = [];
+    const laserLength = 300; // Laser range
+    const stepSize = 10;
+    
+    for (let i = 0; i < laserLength; i += stepSize) {
+        const checkX = laserX + Math.cos(laserAngle) * i;
+        const checkY = laserY + Math.sin(laserAngle) * i;
+        
+        // Check if laser hits any bubble
+        for (let r = 0; r < GRID_HEIGHT; r++) {
+            for (let c = 0; c < GRID_WIDTH; c++) {
+                if (gameState.grid[r][c]) {
+                    const bubble = gameState.grid[r][c];
+                    const distance = Math.sqrt(
+                        Math.pow(bubble.x - checkX, 2) + Math.pow(bubble.y - checkY, 2)
+                    );
+                    
+                    if (distance <= BUBBLE_RADIUS) {
+                        bubblesToDestroy.push({ row: r, col: c, bubble: bubble });
+                    }
+                }
+            }
+        }
+    }
+    
+    // Destroy bubbles hit by laser
+    bubblesToDestroy.forEach(({ row, col, bubble }) => {
+        if (bubble && bubble.sprite) {
+            bubble.sprite.destroy();
+            gameState.grid[row][col] = null;
+            updateScore(40); // Bonus points for laser
+        }
+    });
+    
+    // Play laser sound
+    if (audioManager) {
+        audioManager.playLaserSound();
+    }
+    
+    // Track special bubble usage
+    if (analytics) {
+        analytics.trackSpecialBubbleUsed('laser', 'pierce');
+    }
+    
+    // Remove the laser bubble
+    bubble.destroy();
+    
+    // Check for floating bubbles
+    setTimeout(() => {
+        removeFloatingBubbles.call(this);
+    }, 100);
+}
+
+/**
+ * Create explosion effect
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {number} color - Explosion color
+ */
+function createExplosionEffect(x, y, color) {
+    const particles = this.add.particles(x, y, 'sparkle', {
+        speed: { min: 50, max: 150 },
+        scale: { start: 0.5, end: 0 },
+        lifespan: 600,
+        quantity: 20,
+        tint: color
+    });
+    
+    // Remove particles after animation
+    this.time.delayedCall(600, () => {
+        particles.destroy();
+    });
+}
+
+/**
+ * Create laser beam effect
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {number} angle - Laser angle
+ */
+function createLaserBeamEffect(x, y, angle) {
+    const graphics = this.add.graphics();
+    const laserLength = 300;
+    
+    // Draw laser beam
+    graphics.lineStyle(4, 0x00ff00, 0.8);
+    graphics.beginPath();
+    graphics.moveTo(x, y);
+    graphics.lineTo(
+        x + Math.cos(angle) * laserLength,
+        y + Math.sin(angle) * laserLength
+    );
+    graphics.strokePath();
+    
+    // Add glow effect
+    graphics.lineStyle(8, 0x00ff00, 0.3);
+    graphics.beginPath();
+    graphics.moveTo(x, y);
+    graphics.lineTo(
+        x + Math.cos(angle) * laserLength,
+        y + Math.sin(angle) * laserLength
+    );
+    graphics.strokePath();
+    
+    // Remove laser after short time
+    this.time.delayedCall(200, () => {
+        graphics.destroy();
+    });
+}
+
+/**
  * Convert color name to hex value
  */
 function getColorHex(colorName) {
@@ -2439,6 +3150,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Initialize Analytics, Social, and Performance
+let analytics = null;
+let socialManager = null;
+let performanceManager = null;
+
 // Export for global access
 window.gameState = gameState;
 window.GAME_CONFIG = GAME_CONFIG;
+window.audioManager = audioManager;
+window.analytics = analytics;
+window.socialManager = socialManager;
+window.performanceManager = performanceManager;

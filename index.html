@@ -18,6 +18,18 @@
     <!-- Mobile-first CSS with cache busting -->
     <link rel="stylesheet" href="./css/styles.css?v=v202509270014" />
     
+    <!-- Mobile optimization meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Preload critical resources for mobile -->
+    <link rel="preload" href="./public/libs/phaser.min.js" as="script" />
+    <link rel="preload" href="./js/game.js" as="script" />
+    <link rel="preload" href="./js/analytics.js" as="script" />
+    
     <title>BustAGroove - Bubble Shooter PWA</title>
   </head>
   <body>

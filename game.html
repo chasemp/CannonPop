@@ -47,6 +47,15 @@
     <!-- Phaser library (local copy for offline capability) -->
     <script src="./public/libs/phaser.min.js"></script>
     
+    <!-- Analytics system -->
+    <script src="./js/analytics.js?v=v202509270014"></script>
+    
+    <!-- Social features -->
+    <script src="./js/social.js?v=v202509270014"></script>
+    
+    <!-- Performance optimization -->
+    <script src="./js/performance.js?v=v202509270014"></script>
+    
     <!-- Game entry point with cache busting -->
     <script src="./js/game.js?v=v202509270014"></script>
     
@@ -70,9 +79,40 @@
             case 'restart':
               window.gameInstance.scene.restart();
               break;
+            case 'updateSettings':
+              updateGameSettings(event.data.settings);
+              break;
           }
         }
       });
+      
+      // Update game settings
+      function updateGameSettings(settings) {
+        console.log('🎮 Updating game settings:', settings);
+        
+        // Update audio manager settings
+        if (window.audioManager) {
+          if (settings.soundEffects !== undefined) {
+            window.audioManager.setSfxEnabled(settings.soundEffects);
+          }
+          if (settings.masterVolume !== undefined) {
+            window.audioManager.setMasterVolume(settings.masterVolume / 100);
+          }
+        }
+        
+        // Update game state settings
+        if (window.gameState) {
+          if (settings.showAimingLine !== undefined) {
+            window.gameState.showAimingLine = settings.showAimingLine;
+          }
+          if (settings.hapticFeedback !== undefined) {
+            window.gameState.hapticFeedback = settings.hapticFeedback;
+          }
+          if (settings.difficulty !== undefined) {
+            window.gameState.difficulty = settings.difficulty;
+          }
+        }
+      }
       
       // Helper function to send messages to parent
       window.sendToParent = (data) => {
