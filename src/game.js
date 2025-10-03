@@ -929,6 +929,121 @@ function checkForMatches(col, row) {
         
         // Update score
         updateScore(matches.length * 10);
+        
+        // Check for and remove floating bubbles (not connected to ceiling)
+        removeFloatingBubbles.call(this);
+    }
+}
+
+/**
+ * Find all bubbles connected to the ceiling (row 0)
+ */
+function findConnectedBubbles() {
+    const connected = new Set();
+    
+    function bfs(col, row) {
+        const key = `${col},${row}`;
+        if (connected.has(key)) return;
+        if (!gameState.grid[row] || !gameState.grid[row][col]) return;
+        
+        connected.add(key);
+        
+        // Get neighbors based on hexagonal grid
+        const isEvenRow = row % 2 === 0;
+        let neighbors;
+        
+        if (isEvenRow) {
+            neighbors = [
+                {c: col-1, r: row},     // left
+                {c: col+1, r: row},     // right
+                {c: col-1, r: row-1},   // top-left
+                {c: col, r: row-1},     // top-right
+                {c: col-1, r: row+1},   // bottom-left
+                {c: col, r: row+1}      // bottom-right
+            ];
+        } else {
+            neighbors = [
+                {c: col-1, r: row},     // left
+                {c: col+1, r: row},     // right
+                {c: col, r: row-1},     // top-left
+                {c: col+1, r: row-1},   // top-right
+                {c: col, r: row+1},     // bottom-left
+                {c: col+1, r: row+1}    // bottom-right
+            ];
+        }
+        
+        neighbors.forEach(({c: nc, r: nr}) => {
+            if (nc >= 0 && nc < GRID_WIDTH && nr >= 0 && nr < GRID_HEIGHT) {
+                bfs(nc, nr);
+            }
+        });
+    }
+    
+    // Start BFS from all bubbles in the top row (ceiling)
+    for (let col = 0; col < GRID_WIDTH; col++) {
+        if (gameState.grid[0][col]) {
+            bfs(col, 0);
+        }
+    }
+    
+    return connected;
+}
+
+/**
+ * Remove bubbles that are not connected to the ceiling
+ */
+function removeFloatingBubbles() {
+    const connected = findConnectedBubbles();
+    const floating = [];
+    
+    // Find all floating bubbles
+    for (let row = 0; row < GRID_HEIGHT; row++) {
+        for (let col = 0; col < GRID_WIDTH; col++) {
+            if (gameState.grid[row][col]) {
+                const key = `${col},${row}`;
+                if (!connected.has(key)) {
+                    floating.push({col, row});
+                }
+            }
+        }
+    }
+    
+    // Remove floating bubbles with falling animation
+    if (floating.length > 0) {
+        logger.log(`💧 Dropping ${floating.length} floating bubble(s)`);
+        
+        floating.forEach(({col, row}) => {
+            const gridItem = gameState.grid[row][col];
+            let sprite = null;
+            
+            if (gridItem.sprite) {
+                sprite = gridItem.sprite;
+            } else if (gridItem.destroy) {
+                sprite = gridItem;
+            }
+            
+            if (sprite && sprite.destroy && typeof sprite.destroy === 'function') {
+                // Animate falling
+                this.tweens.add({
+                    targets: sprite,
+                    y: GAME_CONFIG.height + 100,
+                    angle: Math.random() * 360,
+                    alpha: 0.5,
+                    duration: 800 + Math.random() * 400,
+                    ease: 'Quad.easeIn',
+                    onComplete: () => {
+                        if (sprite.active) {
+                            sprite.destroy();
+                        }
+                    }
+                });
+            }
+            
+            gameState.grid[row][col] = null;
+        });
+        
+        // Bonus points for floating bubbles
+        updateScore(floating.length * 20);
     }
 }
 
