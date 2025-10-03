@@ -173,6 +173,10 @@ function create() {
     // Create launcher
     createLauncher.call(this);
     
+    // Create aiming line graphics (initialize early for proper depth layering)
+    gameState.aimingLine = this.add.graphics();
+    gameState.aimingLine.setDepth(15); // Above cannon (10), below bubbles (20)
+    
     // Initialize input handling (mobile + desktop)
     setupInputHandling.call(this);
     
@@ -1598,13 +1602,7 @@ function getColorHex(colorName) {
 function startAiming(targetX, targetY) {
     gameState.isAiming = true;
     
-    // Create or update aiming line
-    if (!gameState.aimingLine) {
-        gameState.aimingLine = this.add.graphics();
-        // Set depth above cannon (10) but below bubbles (20)
-        gameState.aimingLine.setDepth(15);
-    }
-    
+    // Aiming line already created during initialization with proper depth
     updateAimingVisuals.call(this, targetX, targetY);
 }
 
