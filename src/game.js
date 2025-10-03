@@ -381,6 +381,7 @@ function populateInitialGrid() {
                 bubble.setCircle(BUBBLE_RADIUS);
                 bubble.setImmovable(true);
                 bubble.color = color;
+                bubble.setDepth(20); // Bubbles above everything else
                 bubble.gridCol = col;
                 bubble.gridRow = row;
                 
@@ -400,6 +401,8 @@ function createLauncher() {
     
     // Create cannon container for grouped elements
     gameState.launcher = this.add.container(launcherX, launcherY);
+    // Set cannon depth to 10 (below aiming line at 15, below bubbles at 20)
+    gameState.launcher.setDepth(10);
     
     // Create cannon base (sturdy platform instead of wheels)
     const cannonBase = this.add.rectangle(0, 20, 90, 30, 0x444444);
@@ -474,6 +477,7 @@ function createNewBubble() {
     gameState.currentBubble = this.physics.add.sprite(launcherX, launcherY - 40, color + '_bubble');
     gameState.currentBubble.setCircle(BUBBLE_RADIUS);
     gameState.currentBubble.color = color;
+    gameState.currentBubble.setDepth(20); // Bubbles above everything else
     
     // NO GLOW EFFECT - Disabled to prevent flashing
     // addBalloonGlow.call(this, gameState.currentBubble);
@@ -497,6 +501,7 @@ function createNextBubble() {
     gameState.nextBubble = this.add.sprite(previewX, previewY, color + '_bubble');
     gameState.nextBubble.setScale(0.7);
     gameState.nextBubble.color = color;
+    gameState.nextBubble.setDepth(20); // Above aiming line
     
     // NO GLOW EFFECT - Disabled to prevent flashing
 }
@@ -1487,6 +1492,8 @@ function startAiming(targetX, targetY) {
     // Create or update aiming line
     if (!gameState.aimingLine) {
         gameState.aimingLine = this.add.graphics();
+        // Set depth above cannon (10) but below bubbles (20)
+        gameState.aimingLine.setDepth(15);
     }
     
     updateAimingVisuals.call(this, targetX, targetY);
