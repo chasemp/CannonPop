@@ -540,7 +540,7 @@
     border-radius: 12px;
     overflow: hidden;
     background: var(--bg-color, #fff5e1); /* Match UI background */
-    border: 2px solid var(--border-color, rgba(255, 255, 255, 0.2));
+    border: none; /* No border - seamless blend */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
   

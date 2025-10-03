@@ -333,8 +333,8 @@ function initializeGrid() {
 /**
  * Grid offset for centering the play area
  */
-const GRID_OFFSET_X = 60; // Center horizontally in 400px canvas
-const GRID_OFFSET_Y = 30; // Top margin
+const GRID_OFFSET_X = 60; // Center horizontally in 400px canvas (grid is ~320px wide)
+const GRID_OFFSET_Y = 60; // Center vertically (more space from top)
 
 /**
  * Grid-to-World coordinate conversion
