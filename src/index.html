@@ -5,17 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#2c1810" />
-    <meta name="description" content="BustAGroove - Mobile-first bubble shooter PWA" />
+    <meta name="description" content="CannonPop - Mobile-first bubble shooter PWA" />
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/assets/manifest-C25ZhYac.json" />
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- Apple PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="BustAGroove" />
-    
-    <!-- Mobile-first CSS with cache busting -->
+    <meta name="apple-mobile-web-app-title" content="CannonPop" />
     
     <!-- Mobile optimization meta tags -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -24,19 +22,11 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
     
-    <!-- Preload critical resources for mobile -->
-    <link rel="preload" href="/assets/phaser.min-CwlHMuXa.js" as="script" />
-    <link rel="preload" href="/assets/game-gkGilfDg.js" as="script" />
-    <link rel="preload" href="/assets/analytics-DGdwgJ5X.js" as="script" />
-    
-    <title>BustAGroove - Bubble Shooter PWA</title>
-    <script type="module" crossorigin src="/assets/app-DSrwAtDK.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/app-TtDZK9zs.css">
+    <title>CannonPop - Bubble Shooter PWA</title>
   </head>
   <body>
     <div id="app"></div>
-    
-    <!-- Core Svelte app with cache busting -->
+    <script type="module" src="./main.ts"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

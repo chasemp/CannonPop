@@ -1,46 +1,29 @@
 # 🎮 CannonPop - Mobile-First Bubble Shooter PWA
 
-A modern, mobile-first Progressive Web App implementation of the classic Bust-a-Move bubble shooter game, built with advanced PWA patterns learned from real-world production deployments.
+A modern, mobile-first Progressive Web App implementation of the classic bubble shooter game, built with Svelte, TypeScript, and Phaser 3.
 
 ## 🚀 **Live Demo**
-[Play CannonPop](https://chasemp.github.io/CannonPop/) - Mobile-optimized PWA
+**[Play CannonPop](https://cannonpop.523.life/)** - Mobile-optimized PWA
 
-**📱 Mobile-First Design**: Optimized for touch interactions and mobile screens
-**🎮 Play on Any Device**: Works on phones, tablets, and desktop
-**⚡ Offline Capable**: Play anywhere, even without internet
+📱 **Mobile-First Design** • 🎮 **Play on Any Device** • ⚡ **Offline Capable**
+
+---
 
 ## ✨ **Features**
 
 ### 🎯 **Core Game Features**
-- **Hexagonal Grid System**: Precise bubble placement with perfect coordinate conversion
+- **Hexagonal Grid System**: Precise bubble placement
 - **Physics-Based Shooting**: Realistic trajectory with wall bouncing
-- **Cluster Detection**: Advanced graph-based matching algorithm (BFS/DFS)
-- **Floating Bubble Detection**: Smart removal of disconnected bubbles
-- **Exponential Scoring**: Rewarding strategic play with bonus multipliers
+- **Cluster Detection**: Advanced matching algorithm
+- **Exponential Scoring**: Rewarding strategic play
 
 ### 📱 **PWA Features**
-- **Mobile-First Design**: Optimized for touch interactions and small screens
+- **Mobile-First Design**: Optimized for touch interactions
 - **Offline Capability**: Play anywhere with service worker caching
 - **Installable**: Add to home screen on mobile and desktop
-- **Responsive Canvas**: Adaptive sizing for all screen sizes
-- **Touch Optimized**: Dual event handling (click + touchstart) for all platforms
+- **Responsive**: Adaptive sizing for all screen sizes
 
-### 🏗️ **Advanced Architecture**
-- **Static PWA Sweet Spot**: Modular files without build complexity
-- **Iframe Architecture**: Clean separation between UI shell and game engine
-- **PostMessage Communication**: Reliable cross-frame messaging
-- **Navigation Stack**: Systematic state management for complex flows
-- **Demo Data Lifecycle**: localStorage-first with proper flag management
-- **Cache-Busting System**: Automated version management for reliable updates
-
-## 🛠️ **Technology Stack**
-
-- **UI Framework**: Svelte (minimal bundle size, no runtime overhead)
-- **Game Engine**: Phaser 3 (comprehensive 2D game development)
-- **Build Tool**: Vite (fast development, optimized production builds)
-- **Deployment**: GitHub Pages (ultra-simple static hosting)
-- **PWA**: Service Worker + Web App Manifest
-- **Styling**: Mobile-first CSS with custom properties
+---
 
 ## 🏁 **Quick Start**
 
@@ -49,91 +32,105 @@ A modern, mobile-first Progressive Web App implementation of the classic Bust-a-
 # Install dependencies
 npm install
 
-# Start development server with auto-reload
-npm run dev:server
-
-# Alternative: Standard Vite dev server
+# Start development server (port 3002)
 npm run dev
 
-# Clear cache and restart fresh
-npm run restart
+# Open browser
+open http://localhost:3002
 ```
 
 ### **Production**
 ```bash
-# Update cache-busting versions
-npm run version:update
-
 # Build for production
 npm run build
 
-# Deploy with cache busting
-npm run deploy:bust
+# Preview production build
+npm run preview
+
+# Deploy (just push to main)
+git add -A
+git commit -m "feat: your changes"
+git push origin main  # Auto-deploys to cannonpop.523.life
 ```
 
-### **Testing**
+### **Port Management**
 ```bash
-# Quick milestone validation
-npm run validate:milestone
+# Check assigned port
+npm run port
 
-# Static server testing
-npm run serve:static
+# Check if port 3002 is free
+npm run port:check
 
-# Timeout-protected tests
-npm run test:timeout
+# Kill process on port 3002
+npm run port:kill
+
+# Force restart (kill + start)
+npm run port:force
 ```
 
-## 📋 **Development Workflow**
+---
 
-### **The Milestone Validation Pyramid**
-1. **Level 1**: `file://` protocol - Fastest validation, core functionality
-2. **Level 2**: `http://localhost` - Proper protocols, full JavaScript
-3. **Level 3**: `https://` (GitHub Pages) - Complete PWA features
+## 📂 **Project Structure**
 
-### **Cache-Busting Strategy**
-```bash
-# Automatic timestamp versioning (YYYY.MM.DD.HHMM)
-npm run version:update
+Following the `/src` → `/docs` deployment pattern ([see guide](../peadoubleueh/project-docs/DEPLOYMENT_ARCHITECTURE.md)):
 
-# Updates all asset references:
-# styles.css?v=2025.09.26.2311
-# game.js?v=2025.09.26.2311
+```
+CannonPop/
+├── src/                  # Source code (edit here)
+│   ├── index.html        # Main app entry
+│   ├── game.html         # Game entry
+│   ├── main.ts           # Svelte app entry point
+│   ├── game-main.ts      # Phaser game entry point
+│   ├── sw.js             # Service worker
+│   ├── App.svelte        # Main Svelte component
+│   ├── app/              # Svelte components
+│   └── game/             # Phaser game logic
+│       ├── scenes/       # Game scenes
+│       └── managers/     # Game managers
+│
+├── public/               # Static assets (copied to build)
+│   ├── manifest.json     # PWA manifest
+│   ├── CNAME             # Custom domain config
+│   ├── icons/            # App icons
+│   ├── audio/            # Game audio
+│   ├── libs/             # Phaser library
+│   └── screenshots/      # App screenshots
+│
+├── docs/                 # Build output (auto-generated)
+│   └── [Built files]     # GitHub Pages serves from here
+│
+├── vite.config.ts        # Vite build configuration
+├── package.json          # Dependencies and scripts
+└── README.md             # This file
 ```
 
-### **Mobile-First Development**
-- Start with mobile styles (320px base)
-- Add tablet styles (`@media (min-width: 768px)`)
-- Add desktop styles (`@media (min-width: 1024px)`)
-- Test on actual devices, not just emulation
+### **⚠️ Critical Rules**
+1. **NEVER edit `/docs` directly** - it's auto-generated by `npm run build`
+2. **Always edit source files** in `/src` or `/public`
+3. **GitHub Pages** automatically serves from `/docs` on push to main
+4. **No GitHub Actions needed** - simple push deployment
 
-## 🎯 **Game Architecture**
+---
 
-### **Hexagonal Grid System**
-```javascript
-// Critical coordinate conversion functions
-function gridToWorld(col, row) {
-  const offsetX = (row % 2) * BUBBLE_RADIUS; // Hexagonal offset
-  const x = 50 + (col * BUBBLE_RADIUS * 2) + offsetX;
-  const y = 50 + (row * BUBBLE_RADIUS * 1.7);
-  return { x, y };
-}
+## 🛠️ **Technology Stack**
 
-function worldToGrid(x, y) {
-  const row = Math.round((y - 50) / (BUBBLE_RADIUS * 1.7));
-  const offsetX = (row % 2) * BUBBLE_RADIUS;
-  const col = Math.round((x - 50 - offsetX) / (BUBBLE_RADIUS * 2));
-  return { col, row };
-}
-```
+- **UI Framework**: [Svelte](https://svelte.dev/) - Minimal bundle, no runtime
+- **Game Engine**: [Phaser 3](https://phaser.io/) - 2D game development
+- **Build Tool**: [Vite](https://vitejs.dev/) - Fast dev, optimized builds
+- **Language**: TypeScript - Type safety
+- **Deployment**: GitHub Pages - Simple static hosting
+- **PWA**: Service Worker + Web App Manifest
 
-### **Cluster Detection Algorithm**
-- **Match Detection**: BFS traversal to find connected same-colored bubbles
-- **Minimum Cluster Size**: 3+ bubbles required for removal
-- **Floating Detection**: Separate traversal from ceiling to find disconnected bubbles
-- **Scoring**: 10 points per matched bubble, exponential bonus for floaters (20, 40, 80...)
+---
+
+## 🎮 **Game Architecture**
+
+### **Multi-Page Setup**
+- **`index.html`** (Main App): Svelte-based UI shell
+- **`game.html`** (Game): Phaser-based game engine
 
 ### **PostMessage Communication**
-```javascript
+```typescript
 // Svelte App → Game
 gameIframe.contentWindow.postMessage({ action: 'pause' }, '*');
 
@@ -141,118 +138,104 @@ gameIframe.contentWindow.postMessage({ action: 'pause' }, '*');
 window.parent.postMessage({ event: 'scoreUpdate', score: 1500 }, '*');
 ```
 
-## 🔧 **PWA Implementation**
+---
 
-### **Service Worker Strategy**
-- **Cache-First**: Static assets served from cache
-- **Network-First**: API calls with offline fallback
-- **Precaching**: Essential files cached on install
-- **Background Sync**: Offline score synchronization
+## 🔧 **Development Workflow**
 
-### **Manifest Configuration**
-- **Standalone Display**: Full-screen app experience
-- **Portrait Orientation**: Optimized for mobile play
-- **Multiple Icons**: Complete icon set (72px to 512px)
-- **Shortcuts**: Quick access to game and scores
+### **1. Make Changes**
+Edit files in `/src` or `/public`:
+- UI components: `/src/app/`
+- Game logic: `/src/game/`
+- Styles: `/src/**/*.css`
+- Static assets: `/public/`
 
-## 📊 **Performance Optimizations**
+### **2. Test Locally**
+```bash
+npm run dev  # http://localhost:3002
+```
 
-### **Bundle Size**
-- **Svelte**: ~10KB compiled (no runtime)
-- **Phaser**: ~700KB (loaded from CDN)
-- **Total PWA Shell**: <50KB (excluding game engine)
+### **3. Build for Production**
+```bash
+npm run build  # Outputs to /docs
+```
 
-### **Loading Strategy**
-- **Critical CSS**: Inlined for instant rendering
-- **Game Engine**: CDN loading for reliability
-- **Progressive Enhancement**: Core functionality works without JavaScript
+### **4. Deploy**
+```bash
+git add -A
+git commit -m "feat: your feature"
+git push origin main  # Live at cannonpop.523.life
+```
 
-### **Mobile Optimizations**
-- **Touch Targets**: 44px minimum (Apple HIG compliance)
-- **Viewport Optimization**: `user-scalable=no` for game control
-- **Canvas Sizing**: Responsive with `object-fit: contain`
+---
 
-## 🧪 **Testing Strategy**
+## 📚 **PWA Best Practices**
 
-### **Multi-Environment Testing**
-- **File Protocol**: Core functionality validation
-- **HTTP Server**: Full JavaScript features
-- **HTTPS Production**: Complete PWA capabilities
+This project follows PWA best practices from [peadoubleueh/project-docs](../peadoubleueh/project-docs/):
 
-### **Mobile Testing Checklist**
-- [ ] Touch events work on all interactive elements
-- [ ] Canvas responds correctly to gestures
-- [ ] PWA installs successfully on mobile
-- [ ] Offline functionality works as expected
-- [ ] Performance is smooth on low-end devices
+✅ **Mobile-First Design** - Touch-optimized interactions  
+✅ **Offline-First** - Service worker caching  
+✅ **Page-Based Navigation** - Better than modals on mobile  
+✅ **Conditional Logging** - Silent in production  
+✅ **Port Management** - No conflicts with other PWAs  
 
-## 📚 **Lessons Learned Implementation**
+See the [PWA Development Lessons](../peadoubleueh/project-docs/PWA_DEVELOPMENT_LESSONS.md) for complete guidance.
 
-This project implements battle-tested patterns from production PWA development:
+---
 
-### **Static PWA Sweet Spot**
-- ✅ Modular files for maintainability
-- ✅ No build complexity for reliable deployment
-- ✅ GitHub Pages as primary test environment
-- ✅ CDN dependencies for external libraries
+## 🧪 **Testing**
 
-### **Mobile-First PWA Patterns**
-- ✅ Touch event handling (`click` + `touchstart`)
-- ✅ Pages over modals for complex content
-- ✅ 44px minimum touch targets
-- ✅ CSS custom properties for theming
+### **Local Testing**
+- **Dev Server**: http://localhost:3002 (port 3002)
+- **Preview Build**: `npm run preview` (port 3003)
 
-### **Advanced State Management**
-- ✅ localStorage as authoritative data source
-- ✅ Demo data lifecycle with flag system
-- ✅ Navigation stack for complex flows
-- ✅ PostMessage API for clean component communication
+### **Production Testing**
+- **Live URL**: https://cannonpop.523.life/
+- **Mobile**: Test on actual devices
+- **PWA Install**: Test "Add to Home Screen"
 
-## 🚀 **Deployment**
+### **Port Conflicts?**
+```bash
+npm run port:kill   # Kill process on port 3002
+npm run port:force  # Kill and restart
+```
 
-### **GitHub Pages Setup (Mobile-Optimized)**
-1. **Enable GitHub Pages**: Go to repository Settings → Pages
-2. **Set Source**: "GitHub Actions" (automatic deployment)
-3. **Push to Main**: Triggers automatic mobile-optimized build
-4. **Access URL**: `https://chasemp.github.io/CannonPop/`
+---
 
-### **Mobile Testing Checklist**
-- [ ] **Touch Events**: Tap and drag to aim works smoothly
-- [ ] **Responsive Design**: Scales properly on all screen sizes
-- [ ] **PWA Installation**: "Add to Home Screen" works on mobile
-- [ ] **Offline Mode**: Game works without internet connection
-- [ ] **Performance**: Smooth 60fps gameplay on mobile devices
+## 📊 **Performance**
 
-### **Custom Domain (Optional)**
-1. Add `CNAME` file with your domain
-2. Configure DNS CNAME record  
-3. Enable HTTPS in GitHub Pages settings
-4. Test mobile performance on custom domain
+- **Svelte Bundle**: ~10KB compiled (no runtime)
+- **Phaser Engine**: ~700KB (loaded from CDN/public)
+- **PWA Shell**: <50KB (excluding game engine)
+- **First Paint**: <1s on 4G
+
+---
 
 ## 🤝 **Contributing**
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Implement changes following the established patterns
-4. Test on multiple devices and browsers
-5. Update cache-busting versions (`npm run version:update`)
-6. Commit changes (`git commit -m 'Add amazing feature'`)
-7. Push to branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+3. Follow the established patterns (see [PWA guides](../peadoubleueh/project-docs/))
+4. Test on multiple devices
+5. Commit changes (`git commit -m 'feat: Add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+---
 
 ## 📄 **License**
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 **Acknowledgments**
+---
 
-- **Phaser Community**: Excellent 2D game engine
-- **Svelte Team**: Revolutionary compile-time framework
-- **PWA Community**: Progressive Web App best practices
-- **Bubble Shooter Genre**: Classic game mechanics that inspired this implementation
+## 🔗 **Related Projects**
+
+- **[PWA Template](../peadoubleueh/)** - Base PWA template with all best practices
+- **[Giffer](../Giffer/)** - Video to GIF converter PWA
+- **[Port Registry](../peadoubleueh/PORT_REGISTRY.md)** - Multi-PWA port management
 
 ---
 
 **Built with ❤️ for the mobile-first web**
 
-*This project demonstrates advanced PWA patterns learned from real-world production deployments, focusing on mobile-first design, offline capabilities, and maintainable architecture.*
+*Implements advanced PWA patterns learned from real-world production deployments, focusing on mobile-first design, offline capabilities, and maintainable architecture.*
