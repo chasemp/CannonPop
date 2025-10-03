@@ -6,6 +6,8 @@
   // PWA State Management
   let gameLoaded = false;
   let score = 0;
+  let level = 1;
+  let shots = 0;
   let highScore = parseInt(localStorage.getItem('cannonpop_high_score') || '0');
   let gameInstance = null;
   
@@ -67,8 +69,37 @@
   }
   
   // Game event handlers (called directly from game)
-  function handleScoreUpdate(newScore: number) {
-    score = newScore;
+  function handleScoreUpdate(data: any) {
+    // Handle both direct score numbers and event objects
+    if (typeof data === 'number') {
+      score = data;
+    } else if (data && typeof data === 'object') {
+      // Handle event objects from game
+      switch (data.event) {
+        case 'scoreUpdate':
+          score = data.score;
+          if (data.level !== undefined) level = data.level;
+          if (data.shots !== undefined) shots = data.shots;
+          break;
+        case 'newHighScore':
+          score = data.score;
+          highScore = data.score;
+          localStorage.setItem('cannonpop_high_score', highScore.toString());
+          break;
+        case 'stateChanged':
+          // Handle state changes if needed
+          logger.info('🎮', `Game state changed: ${data.oldState} → ${data.newState}`);
+          break;
+        case 'gameStats':
+          // Handle comprehensive game stats update
+          if (data.score !== undefined) score = data.score;
+          if (data.level !== undefined) level = data.level;
+          if (data.shots !== undefined) shots = data.shots;
+          break;
+      }
+    }
+    
+    // Update high score if current score exceeds it
     if (score > highScore) {
       highScore = score;
       localStorage.setItem('cannonpop_high_score', highScore.toString());
@@ -169,7 +200,7 @@
     
     // Load game code
     console.log('🎮 Loading game code...');
-    await loadScript('./game-legacy.js');
+    await import('./game.js');
     console.log('✅ Game code loaded');
   }
   
@@ -290,16 +321,15 @@
 
 <div class="app-container">
   <!-- Header with Logo and Controls (Blockdoku Pattern) -->
-  <header class="header">
-    <div class="logo-container">
-      <div class="app-logo">🎯</div>
-      <h1>CannonPop</h1>
-      <div class="game-controls">
-        <button class="btn btn-primary new-game-btn" on:click={() => sendCommandToGame('restart')}>
-          New Game
-        </button>
+    <header class="header">
+      <div class="logo-container">
+        <img src="/images/cannon_no_text.png" alt="CannonPop" class="app-logo-img">
+        <div class="game-controls">
+          <button class="btn btn-primary new-game-btn" on:click={() => sendCommandToGame('restart')}>
+            New Game
+          </button>
+        </div>
       </div>
-    </div>
     <div class="controls">
       <!-- Game Settings button navigates to gamesettings.html page -->
       <button class="btn btn-secondary" title="Game Settings" on:click={() => window.location.href = 'gamesettings.html'}>🎮</button>
@@ -308,7 +338,7 @@
     </div>
   </header>
   
-  <!-- SCORING BAR: Always visible score, level, and high score display -->
+  <!-- SCORING BAR: Always visible score, level, and shots display -->
   <div class="game-info">
     <div class="score">
       <span>Score </span>
@@ -316,11 +346,11 @@
     </div>
     <div class="level">
       <span>Level </span>
-      <span id="level">1</span>
+      <span id="level">{level}</span>
     </div>
-    <div class="high-score">
-      <span>High </span>
-      <span id="high-score">{highScore.toLocaleString()}</span>
+    <div class="shots">
+      <span>Shots </span>
+      <span id="shots">{shots}</span>
     </div>
   </div>
   
@@ -363,6 +393,61 @@
 </div>
 
 <style>
+  /* Color Themes */
+  :root {
+    /* Light Theme - Warm Palette */
+    --bg-color: #FDF4E3;         /* Cream background */
+    --card-bg: #ffffff;          /* White cards */
+    --text-color: #134686;       /* Dark blue text */
+    --text-muted: #50589C;       /* Medium blue for muted text */
+    --border-color: #FEB21A;     /* Yellow borders */
+    --primary-color: #ED3F27;    /* Red-orange primary */
+    --primary-hover: #d63620;    /* Darker red on hover */
+    --secondary-color: #FEB21A;  /* Yellow secondary */
+    --secondary-hover: #e5a116;  /* Darker yellow on hover */
+  }
+  
+  /* Dark Theme - Blue Palette */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-color: #3C467B;         /* Dark blue background */
+      --card-bg: #50589C;          /* Medium blue cards */
+      --text-color: #6E8CFB;       /* Light blue text */
+      --text-muted: #9BA9E0;       /* Lighter blue for muted text */
+      --border-color: #636CCB;     /* Medium-light blue borders */
+      --primary-color: #6E8CFB;    /* Light blue primary */
+      --primary-hover: #5a7ae8;    /* Slightly darker blue on hover */
+      --secondary-color: #636CCB;  /* Medium-light blue secondary */
+      --secondary-hover: #5259b3;  /* Darker blue on hover */
+    }
+  }
+  
+  /* Manual dark theme class override (for settings toggle) */
+  .dark-theme {
+    --bg-color: #3C467B;
+    --card-bg: #50589C;
+    --text-color: #6E8CFB;
+    --text-muted: #9BA9E0;
+    --border-color: #636CCB;
+    --primary-color: #6E8CFB;
+    --primary-hover: #5a7ae8;
+    --secondary-color: #636CCB;
+    --secondary-hover: #5259b3;
+  }
+  
+  /* Manual light theme class override (for settings toggle) */
+  .light-theme {
+    --bg-color: #FDF4E3;
+    --card-bg: #ffffff;
+    --text-color: #134686;
+    --text-muted: #50589C;
+    --border-color: #FEB21A;
+    --primary-color: #ED3F27;
+    --primary-hover: #d63620;
+    --secondary-color: #FEB21A;
+    --secondary-hover: #e5a116;
+  }
+  
   /* Blockdoku-inspired styling for CannonPop */
   
   /* Header Styles */
@@ -382,17 +467,11 @@
     gap: 1rem;
   }
   
-  .app-logo {
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .app-logo-img {
     width: 48px;
     height: 48px;
-    background: var(--primary-color, #8d6e63);
-    border-radius: 12px;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    object-fit: contain;
+    margin-right: 12px;
   }
   
   .header h1 {
@@ -628,13 +707,7 @@
     .logo-container {
       gap: 0.75rem;
     }
-    
-    .app-logo {
-      width: 40px;
-      height: 40px;
-      font-size: 1.5rem;
-    }
-    
+
     .header h1 {
       font-size: 1.3rem;
     }

@@ -1,6 +1,6 @@
 {
-  "name": "BustAGroove - Bubble Shooter PWA",
-  "short_name": "BustAGroove",
+  "name": "CannonPop - Bubble Shooter PWA",
+  "short_name": "CannonPop",
   "description": "Mobile-first bubble shooter game with offline capabilities",
   "start_url": "/",
   "display": "standalone",
@@ -11,68 +11,52 @@
   "categories": ["games", "entertainment"],
   "icons": [
     {
-      "src": "/public/icons/icon-72x72.svg",
+      "src": "/icons/icon-72x72.png",
       "sizes": "72x72",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-96x96.svg",
+      "src": "/icons/icon-96x96.png",
       "sizes": "96x96",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-128x128.svg",
+      "src": "/icons/icon-128x128.png",
       "sizes": "128x128",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-144x144.svg",
+      "src": "/icons/icon-144x144.png",
       "sizes": "144x144",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-152x152.svg",
+      "src": "/icons/icon-152x152.png",
       "sizes": "152x152",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-192x192.svg",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-384x384.svg",
+      "src": "/icons/icon-384x384.png",
       "sizes": "384x384",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/public/icons/icon-512x512.svg",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/public/screenshots/game-mobile.svg",
-      "sizes": "390x844",
-      "type": "image/svg+xml",
-      "form_factor": "narrow",
-      "label": "BustAGroove gameplay on mobile"
-    },
-    {
-      "src": "/public/screenshots/game-desktop.svg",
-      "sizes": "1200x800",
-      "type": "image/svg+xml",
-      "form_factor": "wide",
-      "label": "BustAGroove gameplay on desktop"
     }
   ],
   "shortcuts": [
@@ -83,7 +67,7 @@
       "url": "/?action=new-game",
       "icons": [
         {
-          "src": "/public/icons/icon-96x96.svg",
+          "src": "/icons/icon-96x96.png",
           "sizes": "96x96"
         }
       ]
@@ -95,7 +79,7 @@
       "url": "/?tab=scores",
       "icons": [
         {
-          "src": "/public/icons/icon-96x96.svg",
+          "src": "/icons/icon-96x96.png",
           "sizes": "96x96"
         }
       ]
