@@ -1,22 +1,49 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
+import { copyFileSync, mkdirSync, existsSync } from 'fs'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Plugin to copy service worker to output
+function copyServiceWorker() {
+  return {
+    name: 'copy-service-worker',
+    closeBundle: async () => {
+      const src = resolve(__dirname, 'src/sw.js')
+      const dest = resolve(__dirname, 'docs/sw.js')
+      
+      if (existsSync(src)) {
+        copyFileSync(src, dest)
+        console.log('✅ Service worker copied to output directory')
+      }
+    }
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/', // Root path for custom domain deployment
-  plugins: [svelte()],
+  plugins: [svelte(), copyServiceWorker()],
+  root: 'src',
+  publicDir: '../public',
+  base: './',
   build: {
+    outDir: '../docs',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        app: 'index.html',
-        game: 'game.html'
+        app: resolve(__dirname, 'src/index.html'),
+        game: resolve(__dirname, 'src/game.html')
       }
     }
   },
   server: {
-    port: 5174, // Use different port to avoid conflicts with other Vite projects
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    }
+    port: 3002,        // Registered in PORT_REGISTRY.md
+    host: '0.0.0.0',   // Allow network access
+    strictPort: true   // Fail fast if port is taken (prevents conflicts)
+  },
+  preview: {
+    port: 3003
   }
 })
