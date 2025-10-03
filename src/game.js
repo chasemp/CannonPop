@@ -170,6 +170,9 @@ function create() {
     // Initialize grid system
     initializeGrid.call(this);
     
+    // Create playable area border
+    createPlayAreaBorder.call(this);
+    
     // Create launcher
     createLauncher.call(this);
     
@@ -331,13 +334,19 @@ function initializeGrid() {
 }
 
 /**
+ * Grid offset for centering the play area
+ */
+const GRID_OFFSET_X = 60; // Center horizontally in 400px canvas
+const GRID_OFFSET_Y = 30; // Top margin
+
+/**
  * Grid-to-World coordinate conversion
  * Critical function for hexagonal grid positioning
  */
 function gridToWorld(col, row) {
     const offsetX = (row % 2) * (BUBBLE_RADIUS); // Hexagonal offset
-    const x = 50 + (col * BUBBLE_RADIUS * 2) + offsetX;
-    const y = 50 + (row * BUBBLE_RADIUS * 1.7); // Slightly compressed vertically
+    const x = GRID_OFFSET_X + (col * BUBBLE_RADIUS * 2) + offsetX;
+    const y = GRID_OFFSET_Y + (row * BUBBLE_RADIUS * 1.7); // Slightly compressed vertically
     
     return { x, y };
 }
@@ -347,9 +356,9 @@ function gridToWorld(col, row) {
  * Critical function for bubble snapping
  */
 function worldToGrid(x, y) {
-    const row = Math.round((y - 50) / (BUBBLE_RADIUS * 1.7));
+    const row = Math.round((y - GRID_OFFSET_Y) / (BUBBLE_RADIUS * 1.7));
     const offsetX = (row % 2) * BUBBLE_RADIUS;
-    const col = Math.round((x - 50 - offsetX) / (BUBBLE_RADIUS * 2));
+    const col = Math.round((x - GRID_OFFSET_X - offsetX) / (BUBBLE_RADIUS * 2));
     
     // Ensure valid grid bounds
     const validCol = Math.max(0, Math.min(GRID_WIDTH - 1, col));
@@ -390,6 +399,38 @@ function populateInitialGrid() {
             }
         }
     }
+}
+
+/**
+ * Create border around the playable area
+ */
+function createPlayAreaBorder() {
+    // Calculate the actual play area dimensions
+    const gridWidth = GRID_WIDTH * BUBBLE_RADIUS * 2;
+    const gridHeight = GRID_HEIGHT * BUBBLE_RADIUS * 1.7;
+    
+    // Border rectangle position (centered)
+    const borderX = GRID_OFFSET_X - BUBBLE_RADIUS;
+    const borderY = GRID_OFFSET_Y - BUBBLE_RADIUS;
+    const borderWidth = gridWidth + BUBBLE_RADIUS * 2;
+    const borderHeight = gridHeight + BUBBLE_RADIUS * 2;
+    
+    // Create graphics object for the border
+    const graphics = this.add.graphics();
+    
+    // Draw outer border (darker frame)
+    graphics.lineStyle(4, 0x5d4e42, 1); // Dark brown
+    graphics.strokeRect(borderX, borderY, borderWidth, borderHeight);
+    
+    // Draw inner highlight (lighter accent)
+    graphics.lineStyle(2, 0x8d7e72, 0.6); // Lighter brown
+    graphics.strokeRect(borderX + 4, borderY + 4, borderWidth - 8, borderHeight - 8);
+    
+    // Set depth to be below bubbles but above background
+    graphics.setDepth(5);
+    
+    // Store reference for potential cleanup
+    gameState.playAreaBorder = graphics;
 }
 
 /**
