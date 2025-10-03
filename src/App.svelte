@@ -4,27 +4,10 @@
   import EventHelper from './utils/EventHelper';
   
   // PWA State Management
-  let currentTab = 'game';
-  let gameIframe: HTMLIFrameElement;
   let gameLoaded = false;
   let score = 0;
-  let highScore = parseInt(localStorage.getItem('bustagroove_high_score') || '0');
-  
-  // Navigation Stack for complex PWA flows
-  let navigationStack: Array<{
-    container: string;
-    scrollPosition: number;
-    returnTab: string;
-    timestamp: number;
-  }> = [];
-  
-  // Tab Management
-  const tabs = [
-    { id: 'game', label: 'Game', icon: '🎮' },
-    { id: 'scores', label: 'Scores', icon: '🏆' },
-    { id: 'achievements', label: 'Achievements', icon: '🏅' },
-    { id: 'leaderboard', label: 'Leaderboard', icon: '👑' }
-  ];
+  let highScore = parseInt(localStorage.getItem('cannonpop_high_score') || '0');
+  let gameInstance = null;
   
   // Enhanced Dual Event Handling for Mobile + Desktop
   function addDualEventListener(element: HTMLElement, handler: () => void) {
@@ -58,65 +41,43 @@
     }, { passive: false });
   }
   
-  // Tab Navigation
-  function switchTab(tabId: string) {
-    currentTab = tabId;
-    
-    // Load social features when switching to those tabs
-    if (tabId === 'achievements') {
-      setTimeout(() => loadAchievements(), 100);
-    } else if (tabId === 'leaderboard') {
-      setTimeout(() => loadLeaderboard(), 100);
-    }
-    
-    // Send message to game if switching away from game tab
-    if (tabId !== 'game' && gameIframe) {
-      sendMessageToGame({ action: 'pause' });
-    } else if (tabId === 'game' && gameIframe) {
-      sendMessageToGame({ action: 'resume' });
+  
+  // Direct Game Communication (no more postMessage)
+  function sendCommandToGame(command: string, data?: any) {
+    if (gameInstance && (window as any).gameState) {
+      // Direct function calls instead of postMessage
+      switch (command) {
+        case 'restart':
+          if ((window as any).restartGame) {
+            (window as any).restartGame();
+          }
+          break;
+        case 'pause':
+          if ((window as any).pauseGame) {
+            (window as any).pauseGame();
+          }
+          break;
+        case 'resume':
+          if ((window as any).resumeGame) {
+            (window as any).resumeGame();
+          }
+          break;
+      }
     }
   }
   
-  // PostMessage Communication with Game
-  function sendMessageToGame(data: any) {
-    if (gameIframe && gameIframe.contentWindow) {
-      gameIframe.contentWindow.postMessage(data, '*');
+  // Game event handlers (called directly from game)
+  function handleScoreUpdate(newScore: number) {
+    score = newScore;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('cannonpop_high_score', highScore.toString());
     }
   }
   
-  // Listen for messages from game
-  function handleGameMessage(event: MessageEvent) {
-    if (event.origin !== window.location.origin) return;
-    
-    logger.info('📱', 'App received message from game:', event.data);
-    
-    switch (event.data.event) {
-      case 'gameLoaded':
-        gameLoaded = true;
-        // Send current settings to game when it loads
-        sendSettingsToGame();
-        break;
-      case 'scoreUpdate':
-        score = event.data.score;
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem('bustagroove_high_score', highScore.toString());
-        }
-        break;
-      case 'gameOver':
-        // Handle game over
-        break;
-    }
-  }
-  
-  // Send settings to game
-  function sendSettingsToGame() {
-    try {
-      const settings = JSON.parse(localStorage.getItem('bustagroove_settings') || '{}');
-      sendMessageToGame({ action: 'updateSettings', settings: settings });
-    } catch (error) {
-      console.error('Failed to load settings for game:', error);
-    }
+  function handleGameLoaded() {
+    gameLoaded = true;
+    logger.info('🎮', 'Game loaded successfully');
   }
   
   // Mobile instructions
@@ -124,59 +85,20 @@
   
   function hideInstructions() {
     showInstructions = false;
-    localStorage.setItem('bustagroove_instructions_shown', 'true');
+    localStorage.setItem('cannonpop_instructions_shown', 'true');
   }
   
-  // Social Features
-  function shareTopScore() {
-    if ((window as any).socialManager && highScore > 0) {
-      (window as any).socialManager.shareScore(highScore, 1, 0, 0);
-    }
-  }
-  
-  function loadAchievements() {
-    if ((window as any).socialManager) {
-      const achievements = (window as any).socialManager.achievements;
-      const grid = document.getElementById('achievements-grid');
-      if (grid) {
-        grid.innerHTML = achievements.map((achievement: any) => `
-          <div class="achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}">
-            <div class="achievement-icon">${achievement.icon}</div>
-            <div class="achievement-info">
-              <h4>${achievement.name}</h4>
-              <p>${achievement.description}</p>
-              ${achievement.unlocked ? `<small>Unlocked ${new Date(achievement.unlockedAt).toLocaleDateString()}</small>` : ''}
-            </div>
-          </div>
-        `).join('');
-      }
-    }
-  }
-  
-  function loadLeaderboard() {
-    if ((window as any).socialManager) {
-      const leaderboard = (window as any).socialManager.getTopScores(10);
-      const list = document.getElementById('leaderboard-list');
-      if (list) {
-        list.innerHTML = leaderboard.map((entry: any, index: number) => `
-          <div class="leaderboard-item">
-            <span class="rank">#${index + 1}</span>
-            <span class="player">${entry.playerName}</span>
-            <span class="score">${entry.score.toLocaleString()}</span>
-            <span class="level">L${entry.level}</span>
-            <span class="date">${new Date(entry.date).toLocaleDateString()}</span>
-          </div>
-        `).join('');
-      }
-    }
-  }
   
   // Initialize Mobile-First PWA
   onMount(() => {
-    console.log('🎈 Initializing BustAGroove Mobile PWA...');
+    console.log('🎯 Initializing CannonPop Mobile PWA...');
     
-    // Listen for game messages
-    window.addEventListener('message', handleGameMessage);
+    // Load Phaser and game code directly
+    loadGameScripts().then(() => {
+      initializeGame();
+    }).catch(error => {
+      console.error('Failed to load game:', error);
+    });
     
     // Enhanced mobile viewport handling
     setupMobileViewport();
@@ -225,13 +147,85 @@
     }
     
     return () => {
-      window.removeEventListener('message', handleGameMessage);
       if (isMobileDevice()) {
         window.removeEventListener('orientationchange', handleOrientationChange);
         window.removeEventListener('resize', handleMobileResize);
       }
     };
   });
+  
+  // Load game scripts dynamically
+  async function loadGameScripts() {
+    console.log('🔄 Starting to load game scripts...');
+    
+    // Load Phaser
+    if (!(window as any).Phaser) {
+      console.log('📦 Loading Phaser...');
+      await loadScript('/libs/phaser.min.js');
+      console.log('✅ Phaser loaded:', typeof (window as any).Phaser);
+    } else {
+      console.log('✅ Phaser already loaded');
+    }
+    
+    // Load game code
+    console.log('🎮 Loading game code...');
+    await loadScript('./game-legacy.js');
+    console.log('✅ Game code loaded');
+  }
+  
+  // Helper to load scripts
+  function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      console.log(`📥 Loading script: ${src}`);
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => {
+        console.log(`✅ Script loaded successfully: ${src}`);
+        resolve();
+      };
+      script.onerror = (error) => {
+        console.error(`❌ Failed to load script: ${src}`, error);
+        reject(new Error(`Failed to load script: ${src}`));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  
+  // Initialize the game directly
+  function initializeGame() {
+    console.log('🎯 Initializing game...');
+    
+    // Make callback functions available globally for the game
+    (window as any).handleScoreUpdate = handleScoreUpdate;
+    (window as any).handleGameLoaded = handleGameLoaded;
+    
+    console.log('🔗 Callback functions registered globally');
+    console.log('🎮 Game container exists:', !!document.getElementById('game-container'));
+    
+    // Since we're loading the script dynamically, DOMContentLoaded won't fire
+    // We need to manually trigger the game initialization
+    setTimeout(() => {
+      console.log('🚀 Manually triggering game initialization...');
+      console.log('🔍 Available window properties:', Object.keys(window).filter(key => key.includes('game') || key.includes('Game') || key.includes('initialize')));
+      console.log('🔍 GAME_CONFIG available:', !!(window as any).GAME_CONFIG);
+      console.log('🔍 Phaser available:', !!(window as any).Phaser);
+      
+      // Call the manual initialization function we added to game-legacy.js
+      if ((window as any).initializeCannonPopGame) {
+        (window as any).initializeCannonPopGame();
+      } else {
+        console.error('❌ initializeCannonPopGame function not found');
+        
+        // Try to manually trigger the DOMContentLoaded event since the function isn't available
+        console.log('🔄 Attempting to trigger DOMContentLoaded event manually...');
+        const event = new Event('DOMContentLoaded', {
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(event);
+      }
+    }, 100);
+  }
   
   // Mobile device detection
   function isMobileDevice(): boolean {
@@ -272,20 +266,20 @@
   
   // Demo Data Lifecycle Management
   function initializeDemoData() {
-    const demoDataLoaded = localStorage.getItem('bustagroove_demo_data_loaded');
+    const demoDataLoaded = localStorage.getItem('cannonpop_demo_data_loaded');
     if (demoDataLoaded === 'true') {
       console.log('🚩 Demo data previously loaded - localStorage is authoritative');
       return;
     }
     
     // First-time user: seed localStorage with demo data
-    localStorage.setItem('bustagroove_high_score', '12500');
-    localStorage.setItem('bustagroove_settings', JSON.stringify({
+    localStorage.setItem('cannonpop_high_score', '12500');
+    localStorage.setItem('cannonpop_settings', JSON.stringify({
       sound: true,
       music: true,
       difficulty: 'normal'
     }));
-    localStorage.setItem('bustagroove_demo_data_loaded', 'true');
+    localStorage.setItem('cannonpop_demo_data_loaded', 'true');
     
     console.log('🎯 Demo data initialized');
   }
@@ -298,60 +292,52 @@
   <!-- Header with Logo and Controls (Blockdoku Pattern) -->
   <header class="header">
     <div class="logo-container">
-      <div class="app-logo">🎈</div>
-      <h1>BustAGroove</h1>
-      <button class="btn btn-primary new-game-btn" on:click={() => sendMessageToGame({ action: 'restart' })}>
-        New Game
-      </button>
+      <div class="app-logo">🎯</div>
+      <h1>CannonPop</h1>
+      <div class="game-controls">
+        <button class="btn btn-primary new-game-btn" on:click={() => sendCommandToGame('restart')}>
+          New Game
+        </button>
+      </div>
     </div>
     <div class="controls">
-      <div class="score-display">
-        High: {highScore.toLocaleString()}
-      </div>
-      <button class="btn btn-secondary" on:click={() => sendMessageToGame({ action: 'pause' })}>
-        ⏸️
-      </button>
-        <button class="btn btn-secondary" on:click={() => window.location.href = 'settings.html'}>
-          ⚙️
-        </button>
+      <!-- Game Settings button navigates to gamesettings.html page -->
+      <button class="btn btn-secondary" title="Game Settings" on:click={() => window.location.href = 'gamesettings.html'}>🎮</button>
+      <!-- Settings button navigates to separate settings.html page (not a modal) -->
+      <button class="btn btn-secondary" title="Settings" on:click={() => window.location.href = 'settings.html'}>⚙️</button>
     </div>
   </header>
   
-  <!-- Tab Navigation (Mobile-First) -->
-  <nav class="nav-container">
-    <div class="nav-tabs">
-      {#each tabs as tab}
-        <button 
-          class="nav-tab {currentTab === tab.id ? 'active' : ''}"
-          on:click={() => switchTab(tab.id)}
-        >
-          <span class="tab-icon">{tab.icon}</span>
-          <span class="tab-label">{tab.label}</span>
-        </button>
-      {/each}
+  <!-- SCORING BAR: Always visible score, level, and high score display -->
+  <div class="game-info">
+    <div class="score">
+      <span>Score </span>
+      <span id="score">{score.toLocaleString()}</span>
     </div>
-  </nav>
+    <div class="level">
+      <span>Level </span>
+      <span id="level">1</span>
+    </div>
+    <div class="high-score">
+      <span>High </span>
+      <span id="high-score">{highScore.toLocaleString()}</span>
+    </div>
+  </div>
   
   <!-- Main Content -->
-  <main class="main-content">
-    <!-- Game Tab -->
-    <div class="tab-content {currentTab === 'game' ? 'active' : ''}">
-      <div class="game-container">
+  <main class="main">
+    <div class="game-container">
+      <div class="game-area">
         {#if !gameLoaded}
           <div class="loading">
             <div class="loading-spinner"></div>
-            <p>Loading BustAGroove...</p>
+            <p>Loading CannonPop...</p>
             <p class="loading-hint">Tap to start playing!</p>
           </div>
         {/if}
         
-        <iframe 
-          bind:this={gameIframe}
-          class="game-iframe"
-          src="game.html"
-          title="BustAGroove Game"
-          on:load={() => gameLoaded = true}
-        ></iframe>
+        <!-- Direct Phaser game container (no iframe) -->
+        <div id="game-container" class="phaser-game-container"></div>
         
         <!-- Mobile Game Instructions -->
         {#if gameLoaded && isMobileDevice() && showInstructions}
@@ -369,120 +355,210 @@
         {/if}
       </div>
     </div>
-    
-    <!-- High Scores Tab -->
-    <div class="tab-content {currentTab === 'scores' ? 'active' : ''}">
-      <h2>🏆 High Scores</h2>
-      <div class="scores-list">
-        <div class="score-item">
-          <span class="rank">1st</span>
-          <span class="score">{highScore.toLocaleString()}</span>
-          <span class="date">Your Best</span>
-        </div>
-        <div class="score-item demo">
-          <span class="rank">2nd</span>
-          <span class="score">8,750</span>
-          <span class="date">Demo Score</span>
-        </div>
-        <div class="score-item demo">
-          <span class="rank">3rd</span>
-          <span class="score">5,200</span>
-          <span class="date">Demo Score</span>
-        </div>
-      </div>
-      
-      <button class="btn btn-secondary" on:click={() => switchTab('game')}>
-        🎮 Play Again
-      </button>
-      
-      <!-- Share Score Button -->
-      <button class="btn btn-primary" on:click={() => shareTopScore()}>
-        📤 Share Score
-      </button>
-    </div>
-    
-    <!-- Achievements Tab -->
-    <div class="tab-content {currentTab === 'achievements' ? 'active' : ''}">
-      <h2>🏅 Achievements</h2>
-      <div class="achievements-grid" id="achievements-grid">
-        <!-- Achievements will be loaded dynamically -->
-      </div>
-    </div>
-    
-    <!-- Leaderboard Tab -->
-    <div class="tab-content {currentTab === 'leaderboard' ? 'active' : ''}">
-      <h2>👑 Leaderboard</h2>
-      <div class="leaderboard-list" id="leaderboard-list">
-        <!-- Leaderboard will be loaded dynamically -->
-      </div>
-    </div>
-    
   </main>
+  
+  <footer class="footer">
+    <p>Tap and drag to aim, release to shoot. Match 3+ bubbles to clear them!</p>
+  </footer>
 </div>
 
 <style>
-  /* Additional component-specific styles */
-  .score-display {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--accent-color, #ff6b35);
-  }
+  /* Blockdoku-inspired styling for CannonPop */
   
-  .tab-icon {
-    display: block;
-    font-size: 16px;
-    margin-bottom: 2px;
-  }
-  
-  .tab-label {
-    display: block;
-    font-size: 12px;
-  }
-  
-  .scores-list {
+  /* Header Styles */
+  .header {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 24px 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--card-bg, rgba(255, 255, 255, 0.1));
+    border-bottom: 2px solid var(--border-color, rgba(255, 255, 255, 0.2));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
   
-  .score-item {
+  .logo-container {
     display: flex;
     align-items: center;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.05);
+    gap: 1rem;
+  }
+  
+  .app-logo {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: var(--primary-color, #8d6e63);
+    border-radius: 12px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  
+  .header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color, #333);
+  }
+  
+  .game-controls {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
     border-radius: 8px;
-    gap: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
   }
   
-  .score-item.demo {
-    opacity: 0.7;
+  .btn-primary {
+    background: var(--primary-color, #8d6e63);
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
   
-  .rank {
+  .btn-primary:hover {
+    background: var(--primary-hover, #7a5a50);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn-secondary {
+    background: var(--secondary-color, #666);
+    color: white;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-secondary:hover {
+    background: var(--secondary-hover, #555);
+    transform: translateY(-1px);
+  }
+  
+  /* Game Info Bar (Scoring Bar) */
+  .game-info {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-color, rgba(0, 0, 0, 0.05));
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
     font-weight: 600;
-    min-width: 40px;
   }
   
-  .score {
+  .game-info > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .game-info span:first-child {
+    font-size: 0.8rem;
+    color: var(--text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .game-info span:last-child {
+    font-size: 1.1rem;
+    color: var(--text-color, #333);
+    font-weight: 700;
+  }
+  
+  /* Main Game Area */
+  .main {
     flex: 1;
-    font-weight: 600;
-    color: var(--accent-color, #ff6b35);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    min-height: 0;
   }
   
-  .date {
-    font-size: 12px;
-    opacity: 0.7;
+  .game-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
   
+  .game-area {
+    flex: 1;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card-bg, rgba(255, 255, 255, 0.1));
+    border: 2px solid var(--border-color, rgba(255, 255, 255, 0.2));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Direct Phaser game container */
+  .phaser-game-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  /* Loading State */
+  .loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color, #f5f5f5);
+    color: var(--text-color, #333);
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color, rgba(255, 255, 255, 0.3));
+    border-top: 4px solid var(--primary-color, #8d6e63);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .loading p {
+    margin: 0.5rem 0;
+    font-weight: 500;
+  }
   
   .loading-hint {
     font-size: 14px;
     opacity: 0.7;
-    margin-top: 8px;
-    color: var(--accent-color, #ff6b35);
+    color: var(--primary-color, #8d6e63);
   }
   
+  /* Mobile Instructions */
   .mobile-instructions {
     position: absolute;
     top: 0;
@@ -497,148 +573,121 @@
   }
   
   .instruction-content {
-    background: var(--bg-color);
+    background: var(--card-bg, white);
     padding: 2rem;
     border-radius: 12px;
     text-align: center;
     max-width: 300px;
     margin: 1rem;
-    border: 2px solid var(--accent-color, #ff6b35);
+    border: 2px solid var(--primary-color, #8d6e63);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   }
   
   .instruction-content h3 {
     margin: 0 0 1rem 0;
-    color: var(--accent-color, #ff6b35);
+    color: var(--primary-color, #8d6e63);
+    font-size: 1.3rem;
   }
   
   .instruction-content p {
     margin: 0.5rem 0;
     font-size: 14px;
     text-align: left;
+    color: var(--text-color, #333);
   }
   
-  /* Social Features Styles */
-  .achievements-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-  
-  .achievement-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+  /* Footer */
+  .footer {
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
+    text-align: center;
+    background: var(--card-bg, rgba(255, 255, 255, 0.1));
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+    color: var(--text-muted, #666);
   }
   
-  .achievement-item.unlocked {
-    background: rgba(255, 107, 53, 0.1);
-    border-color: var(--primary-color);
+  .footer p {
+    margin: 0;
+    font-size: 0.9rem;
   }
   
-  .achievement-item.locked {
-    opacity: 0.6;
+  /* App Container */
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-color, #f5f5f5);
+    color: var(--text-color, #333);
   }
   
-  .achievement-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
-  }
-  
-  .achievement-info h4 {
-    margin: 0 0 0.25rem 0;
-    color: var(--text-color);
-  }
-  
-  .achievement-info p {
-    margin: 0 0 0.25rem 0;
-    font-size: 14px;
-    color: var(--text-secondary);
-  }
-  
-  .achievement-info small {
-    font-size: 12px;
-    color: var(--accent-color);
-  }
-  
-  .leaderboard-list {
-    margin-top: 1rem;
-  }
-  
-  .leaderboard-item {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .leaderboard-item:first-child {
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
-    color: var(--bg-color);
-  }
-  
-  .leaderboard-item:nth-child(2) {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  .leaderboard-item:nth-child(3) {
-    background: rgba(255, 107, 53, 0.1);
-  }
-  
-  .rank {
-    font-weight: bold;
-    color: var(--accent-color);
-  }
-  
-  .player {
-    font-weight: 500;
-  }
-  
-  .score {
-    font-weight: bold;
-    color: var(--primary-color);
-  }
-  
-  .level {
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-  
-  .date {
-    font-size: 12px;
-    color: var(--text-secondary);
+  /* Mobile Optimizations */
+  @media (max-width: 768px) {
+    .header {
+      padding: 0.75rem 1rem;
+    }
+    
+    .logo-container {
+      gap: 0.75rem;
+    }
+    
+    .app-logo {
+      width: 40px;
+      height: 40px;
+      font-size: 1.5rem;
+    }
+    
+    .header h1 {
+      font-size: 1.3rem;
+    }
+    
+    .btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+    }
+    
+    .game-info {
+      padding: 0.5rem;
+    }
+    
+    .game-info span:first-child {
+      font-size: 0.7rem;
+    }
+    
+    .game-info span:last-child {
+      font-size: 1rem;
+    }
+    
+    .main {
+      padding: 0.75rem;
+    }
   }
   
   @media (max-width: 480px) {
-    .tab-icon {
-      font-size: 14px;
+    .header {
+      padding: 0.5rem 0.75rem;
     }
     
-    .tab-label {
-      font-size: 10px;
-    }
-    
-    .achievements-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .leaderboard-item {
-      grid-template-columns: auto 1fr auto;
+    .logo-container {
       gap: 0.5rem;
     }
     
-    .level, .date {
-      display: none;
+    .header h1 {
+      font-size: 1.1rem;
+    }
+    
+    .btn {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+    }
+    
+    .btn-secondary {
+      padding: 0.4rem;
+      min-width: 40px;
+      min-height: 40px;
+      font-size: 1rem;
+    }
+    
+    .main {
+      padding: 0.5rem;
     }
   }
 </style>

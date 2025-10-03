@@ -31,12 +31,13 @@ export default defineConfig({
   build: {
     outDir: '../docs',
     emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        app: resolve(__dirname, 'src/index.html'),
-        game: resolve(__dirname, 'src/game.html')
-      }
-    }
+        rollupOptions: {
+            input: {
+                app: resolve(__dirname, 'src/index.html'),
+                settings: resolve(__dirname, 'src/settings.html'),
+                gamesettings: resolve(__dirname, 'src/gamesettings.html')
+            }
+        }
   },
   server: {
     port: 3002,        // Registered in PORT_REGISTRY.md
