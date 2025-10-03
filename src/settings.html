@@ -14,19 +14,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.svg">
     <link rel="stylesheet" href="./app.css">
+    <link rel="stylesheet" href="./theme.css">
+    <script type="module" src="./theme.js"></script>
     <style>
-        :root {
-            --primary-color: #8d6e63;
-            --primary-hover: #7a5a50;
-            --secondary-color: #666;
-            --secondary-hover: #555;
-            --bg-color: #f5f5f5;
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --text-color: #333;
-            --text-muted: #666;
-            --border-color: rgba(0, 0, 0, 0.1);
-            --accent-color: #ff6b35;
-        }
 
         body {
             margin: 0;
@@ -301,18 +291,15 @@
             <!-- Theme Section -->
             <div class="settings-section active" id="theme-section">
                 <h2 class="section-title">Theme</h2>
+                <p class="section-description">Choose between light and dark mode</p>
                 <div class="theme-options">
-                    <button class="theme-option active" data-theme="wood">
-                        <span class="theme-preview wood-preview">W</span>
-                        <span>Wood</span>
-                    </button>
                     <button class="theme-option" data-theme="light">
-                        <span class="theme-preview light-preview">L</span>
-                        <span>Light</span>
+                        <span class="theme-preview light-preview">☀️</span>
+                        <span>Light Mode</span>
                     </button>
                     <button class="theme-option" data-theme="dark">
-                        <span class="theme-preview dark-preview">D</span>
-                        <span>Dark</span>
+                        <span class="theme-preview dark-preview">🌙</span>
+                        <span>Dark Mode</span>
                     </button>
                 </div>
             </div>
@@ -415,11 +402,11 @@
                     this.classList.add('active');
                     
                     const theme = this.dataset.theme;
-                    // Save theme preference
-                    localStorage.setItem('cannonpop_theme', theme);
-                    
-                    // Apply theme (you can expand this to actually change the theme)
-                    console.log('Theme changed to:', theme);
+                    // Use theme manager to apply theme
+                    if (window.themeManager) {
+                        window.themeManager.setTheme(theme);
+                        console.log('Theme changed to:', theme);
+                    }
                 });
             });
             
@@ -429,7 +416,7 @@
         
         function loadSettings() {
             // Load theme preference
-            const savedTheme = localStorage.getItem('cannonpop_theme') || 'wood';
+            const savedTheme = window.themeManager ? window.themeManager.getTheme() : 'light';
             const themeOption = document.querySelector(`[data-theme="${savedTheme}"]`);
             if (themeOption) {
                 document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));

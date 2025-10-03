@@ -124,6 +124,14 @@
   onMount(() => {
     console.log('🎯 Initializing CannonPop Mobile PWA...');
     
+    // Initialize theme system
+    if (!(window as any).themeManager) {
+      import('./theme.js').then((module) => {
+        (window as any).themeManager = module.default;
+        console.log('🎨 Theme manager loaded');
+      });
+    }
+    
     // Load Phaser and game code directly
     loadGameScripts().then(() => {
       initializeGame();
@@ -393,60 +401,8 @@
 </div>
 
 <style>
-  /* Color Themes */
-  :root {
-    /* Light Theme - Warm Palette */
-    --bg-color: #FDF4E3;         /* Cream background */
-    --card-bg: #ffffff;          /* White cards */
-    --text-color: #134686;       /* Dark blue text */
-    --text-muted: #50589C;       /* Medium blue for muted text */
-    --border-color: #FEB21A;     /* Yellow borders */
-    --primary-color: #ED3F27;    /* Red-orange primary */
-    --primary-hover: #d63620;    /* Darker red on hover */
-    --secondary-color: #FEB21A;  /* Yellow secondary */
-    --secondary-hover: #e5a116;  /* Darker yellow on hover */
-  }
-  
-  /* Dark Theme - Blue Palette */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg-color: #3C467B;         /* Dark blue background */
-      --card-bg: #50589C;          /* Medium blue cards */
-      --text-color: #6E8CFB;       /* Light blue text */
-      --text-muted: #9BA9E0;       /* Lighter blue for muted text */
-      --border-color: #636CCB;     /* Medium-light blue borders */
-      --primary-color: #6E8CFB;    /* Light blue primary */
-      --primary-hover: #5a7ae8;    /* Slightly darker blue on hover */
-      --secondary-color: #636CCB;  /* Medium-light blue secondary */
-      --secondary-hover: #5259b3;  /* Darker blue on hover */
-    }
-  }
-  
-  /* Manual dark theme class override (for settings toggle) */
-  .dark-theme {
-    --bg-color: #3C467B;
-    --card-bg: #50589C;
-    --text-color: #6E8CFB;
-    --text-muted: #9BA9E0;
-    --border-color: #636CCB;
-    --primary-color: #6E8CFB;
-    --primary-hover: #5a7ae8;
-    --secondary-color: #636CCB;
-    --secondary-hover: #5259b3;
-  }
-  
-  /* Manual light theme class override (for settings toggle) */
-  .light-theme {
-    --bg-color: #FDF4E3;
-    --card-bg: #ffffff;
-    --text-color: #134686;
-    --text-muted: #50589C;
-    --border-color: #FEB21A;
-    --primary-color: #ED3F27;
-    --primary-hover: #d63620;
-    --secondary-color: #FEB21A;
-    --secondary-hover: #e5a116;
-  }
+  /* Import unified theme system */
+  @import './theme.css';
   
   /* Blockdoku-inspired styling for CannonPop */
   

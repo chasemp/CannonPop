@@ -1,0 +1,137 @@
+/**
+ * CannonPop Unified Theme System
+ * Light and Dark modes with consistent color palettes
+ */
+
+/* Default Light Theme - Warm Palette */
+:root {
+    --primary-color: #ff6b35;
+    --primary-hover: #e5521f;
+    --secondary-color: #f7b731;
+    --secondary-hover: #e5a116;
+    --bg-color: #fff5e1;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --text-color: #2c1810;
+    --text-secondary: #8d6e63;
+    --text-muted: #a1887f;
+    --border-color: rgba(141, 110, 99, 0.2);
+    --accent-color: #ff6b35;
+    --shadow: rgba(44, 24, 16, 0.1);
+    --hover-bg: rgba(255, 107, 53, 0.1);
+}
+
+/* Dark Theme - Blue Palette */
+.dark-theme,
+[data-theme="dark"] {
+    --primary-color: #64b5f6;
+    --primary-hover: #42a5f5;
+    --secondary-color: #90caf9;
+    --secondary-hover: #64b5f6;
+    --bg-color: #1e1e2e;
+    --card-bg: rgba(42, 42, 62, 0.9);
+    --text-color: #e0e0e0;
+    --text-secondary: #b0b0c0;
+    --text-muted: #808090;
+    --border-color: rgba(100, 181, 246, 0.2);
+    --accent-color: #90caf9;
+    --shadow: rgba(0, 0, 0, 0.3);
+    --hover-bg: rgba(100, 181, 246, 0.1);
+}
+
+/* Apply theme to body */
+body {
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* System preference detection */
+@media (prefers-color-scheme: dark) {
+    :root:not(.light-theme):not([data-theme="light"]) {
+        --primary-color: #64b5f6;
+        --primary-hover: #42a5f5;
+        --secondary-color: #90caf9;
+        --secondary-hover: #64b5f6;
+        --bg-color: #1e1e2e;
+        --card-bg: rgba(42, 42, 62, 0.9);
+        --text-color: #e0e0e0;
+        --text-secondary: #b0b0c0;
+        --text-muted: #808090;
+        --border-color: rgba(100, 181, 246, 0.2);
+        --accent-color: #90caf9;
+        --shadow: rgba(0, 0, 0, 0.3);
+        --hover-bg: rgba(100, 181, 246, 0.1);
+    }
+}
+
+/* Button styles that respect theme */
+.btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--shadow);
+}
+
+.btn-secondary {
+    background: var(--secondary-color);
+    color: var(--text-color);
+}
+
+.btn-secondary:hover {
+    background: var(--secondary-hover);
+}
+
+/* Card/container styles */
+.card,
+.settings-content,
+.difficulty-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 12px var(--shadow);
+    transition: all 0.3s ease;
+}
+
+/* Input styles */
+input[type="range"] {
+    accent-color: var(--primary-color);
+}
+
+input[type="checkbox"] {
+    accent-color: var(--primary-color);
+}
+
+/* Text styles */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-color);
+}
+
+p {
+    color: var(--text-secondary);
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+/* Link styles */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-hover);
+}
+
