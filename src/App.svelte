@@ -539,7 +539,7 @@
     position: relative;
     border-radius: 12px;
     overflow: hidden;
-    background: var(--card-bg, rgba(255, 255, 255, 0.1));
+    background: #b5978c; /* Match Phaser game board color */
     border: 2px solid var(--border-color, rgba(255, 255, 255, 0.2));
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
@@ -550,6 +550,7 @@
     height: 100%;
     border-radius: 10px;
     overflow: hidden;
+    background: #b5978c; /* Match game board background */
   }
   
   /* Loading State */
