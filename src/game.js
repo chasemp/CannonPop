@@ -626,13 +626,19 @@ function shootBubble(targetX, targetY) {
     gameState.currentBubble.setBounce(0.8, 0.8);
     gameState.currentBubble.setCollideWorldBounds(true);
     
-    // Add collision with other bubbles
-    this.physics.add.collider(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
-        // Handle normal bubble collision - snap to grid
-        snapBubbleToGrid.call(this, bubble, target);
-    });
+    // Mark bubble as "in flight" to prevent multiple collision handling
+    gameState.currentBubble.setData('inFlight', true);
     
-    // Clear current bubble
+    // Use overlap instead of collider to have more control
+    this.physics.add.overlap(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
+        // Only handle collision once
+        if (bubble.getData('inFlight')) {
+            bubble.setData('inFlight', false);
+            snapBubbleToGrid.call(this, bubble, target);
+        }
+    }, null, this);
+    
+    // Clear current bubble reference
     gameState.currentBubble = null;
     
     // Notify parent of shot fired (update shots counter)
@@ -655,32 +661,52 @@ function shootBubble(targetX, targetY) {
  * Snap a fired bubble to the grid when it collides
  */
 function snapBubbleToGrid(firedBubble, targetBubble) {
-    // Stop the bubble immediately
+    // Immediately disable physics to prevent passing through
     firedBubble.setVelocity(0, 0);
+    firedBubble.body.enable = false;
     
     // Get the target bubble's grid position
     const targetGridPos = worldToGrid(targetBubble.x, targetBubble.y);
     
-    // Find the nearest empty neighbor to the target
-    const emptyPos = findNearestEmptyNeighbor(targetGridPos.col, targetGridPos.row);
+    // Find the nearest empty neighbor to the target, closest to fired bubble's position
+    const emptyPos = findNearestEmptyNeighbor(targetGridPos.col, targetGridPos.row, firedBubble.x, firedBubble.y);
     
     if (!emptyPos) {
-        logger.warn('⚠️ No empty neighbor found, trying fired bubble position');
-        // Fallback: try the fired bubble's own position
+        // Fallback: try the fired bubble's current position
         const firedGridPos = worldToGrid(firedBubble.x, firedBubble.y);
         if (isValidGridPosition(firedGridPos.col, firedGridPos.row) && 
             !gameState.grid[firedGridPos.row][firedGridPos.col]) {
             const worldPos = gridToWorld(firedGridPos.col, firedGridPos.row);
             firedBubble.setPosition(worldPos.x, worldPos.y);
+            
+            // Add to bubble group and grid
+            gameState.bubbleGroup.add(firedBubble);
             gameState.grid[firedGridPos.row][firedGridPos.col] = {
                 color: firedBubble.texture.key.replace('_bubble', ''),
                 sprite: firedBubble
             };
+            
             checkForMatches.call(this, firedGridPos.col, firedGridPos.row);
             return;
         }
         
-        // No position available, destroy bubble
+        // Last resort: try to find ANY empty position near the collision
+        const anyEmpty = findAnyEmptyPosition(firedBubble.x, firedBubble.y);
+        if (anyEmpty) {
+            const worldPos = gridToWorld(anyEmpty.col, anyEmpty.row);
+            firedBubble.setPosition(worldPos.x, worldPos.y);
+            
+            gameState.bubbleGroup.add(firedBubble);
+            gameState.grid[anyEmpty.row][anyEmpty.col] = {
+                color: firedBubble.texture.key.replace('_bubble', ''),
+                sprite: firedBubble
+            };
+            
+            checkForMatches.call(this, anyEmpty.col, anyEmpty.row);
+            return;
+        }
+        
+        // No position available at all
         logger.warn('⚠️ No valid position found, destroying bubble');
         firedBubble.destroy();
         return;
@@ -690,7 +716,8 @@ function snapBubbleToGrid(firedBubble, targetBubble) {
     const worldPos = gridToWorld(emptyPos.col, emptyPos.row);
     firedBubble.setPosition(worldPos.x, worldPos.y);
     
-    // Add to grid
+    // Add to bubble group and grid
+    gameState.bubbleGroup.add(firedBubble);
     if (gameState.grid[emptyPos.row]) {
         gameState.grid[emptyPos.row][emptyPos.col] = {
             color: firedBubble.texture.key.replace('_bubble', ''),
@@ -703,9 +730,9 @@ function snapBubbleToGrid(firedBubble, targetBubble) {
 }
 
 /**
- * Find nearest empty neighbor position (only checks direct neighbors)
+ * Find nearest empty neighbor position (prioritizes position closest to fired bubble)
  */
-function findNearestEmptyNeighbor(col, row) {
+function findNearestEmptyNeighbor(col, row, firedX, firedY) {
     const isEvenRow = row % 2 === 0;
     let neighbors;
     
@@ -729,10 +756,46 @@ function findNearestEmptyNeighbor(col, row) {
         ];
     }
     
-    // Check each neighbor for an empty spot
-    for (const neighbor of neighbors) {
-        if (isValidGridPosition(neighbor.c, neighbor.r) && !gameState.grid[neighbor.r][neighbor.c]) {
-            return { col: neighbor.c, row: neighbor.r };
+    // Filter to only valid empty positions
+    const validNeighbors = neighbors.filter(({c, r}) => 
+        isValidGridPosition(c, r) && !gameState.grid[r][c]
+    );
+    
+    if (validNeighbors.length === 0) {
+        return null;
+    }
+    
+    // Sort by distance from fired bubble if position provided
+    if (firedX !== undefined && firedY !== undefined) {
+        validNeighbors.sort((a, b) => {
+            const aPos = gridToWorld(a.c, a.r);
+            const bPos = gridToWorld(b.c, b.r);
+            const aDist = Phaser.Math.Distance.Between(firedX, firedY, aPos.x, aPos.y);
+            const bDist = Phaser.Math.Distance.Between(firedX, firedY, bPos.x, bPos.y);
+            return aDist - bDist;
+        });
+    }
+    
+    return {col: validNeighbors[0].c, row: validNeighbors[0].r};
+}
+
+/**
+ * Find any empty position in the grid near given world coordinates
+ */
+function findAnyEmptyPosition(x, y) {
+    const centerPos = worldToGrid(x, y);
+    const searchRadius = 3;
+    
+    // Search in expanding circles
+    for (let radius = 0; radius <= searchRadius; radius++) {
+        for (let row = Math.max(0, centerPos.row - radius); 
+             row <= Math.min(GRID_HEIGHT - 1, centerPos.row + radius); row++) {
+            for (let col = Math.max(0, centerPos.col - radius); 
+                 col <= Math.min(GRID_WIDTH - 1, centerPos.col + radius); col++) {
+                if (isValidGridPosition(col, row) && !gameState.grid[row][col]) {
+                    return {col, row};
+                }
+            }
         }
     }
     
