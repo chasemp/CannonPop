@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import logger from './utils/Logger';
+  import EventHelper from './utils/EventHelper';
   
   // PWA State Management
   let currentTab = 'game';
@@ -86,7 +88,7 @@
   function handleGameMessage(event: MessageEvent) {
     if (event.origin !== window.location.origin) return;
     
-    console.log('📱 App received message from game:', event.data);
+    logger.info('📱', 'App received message from game:', event.data);
     
     switch (event.data.event) {
       case 'gameLoaded':

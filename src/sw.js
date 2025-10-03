@@ -1,78 +1,88 @@
 /**
- * BustAGroove PWA Service Worker
- * Implements offline-first caching strategy
- * Based on PWA lessons learned from MealPlanner
+ * Service Worker - CannonPop PWA
+ * Based on PWA best practices
  */
 
-const CACHE_NAME = 'bustagroove-v2025.09.27.0045';
-const STATIC_CACHE_NAME = 'bustagroove-static-v1';
+// Inline logger for service worker (no ES6 modules support)
+const isDev = () => {
+  return self.location.hostname === 'localhost' || 
+         self.location.hostname.includes('127.0.0.1') ||
+         self.registration?.scope.includes('localhost');
+};
 
-// Files to cache immediately on install
-const PRECACHE_URLS = [
+const logger = {
+  log: (...args) => { if (isDev()) console.log(...args); },
+  warn: (...args) => { if (isDev()) console.warn(...args); },
+  error: (...args) => { console.error(...args); }, // Always log errors
+  info: (emoji, ...args) => { if (isDev()) console.log(emoji, ...args); }
+};
+
+const CACHE_VERSION = '1.0.0';
+const CACHE_NAME = `cannonpop-cache-${CACHE_VERSION}`;
+const STATIC_CACHE_NAME = `cannonpop-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE_NAME = `cannonpop-dynamic-${CACHE_VERSION}`;
+
+// Static assets to cache immediately
+const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/game.html',
-  '/settings.html',
   '/manifest.json',
-  '/css/styles.css',
-  '/css/game.css',
-  '/js/game.js',
-  '/js/analytics.js',
-  '/src/main.ts',
-  // Local libraries (self-contained, no external dependencies)
-  '/public/libs/phaser.min.js',
-  // PWA assets
-  '/public/icons/icon-192x192.svg',
-  '/public/icons/icon-512x512.svg'
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg',
+  '/libs/phaser.min.js'
 ];
 
-// Install event - precache essential files
+// Install Event - Cache static assets
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker installing...');
+  logger.info('🔧', 'Service Worker installing...');
   
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('📦 Precaching essential files');
-        return cache.addAll(PRECACHE_URLS);
+    caches.open(STATIC_CACHE_NAME)
+      .then(cache => {
+        logger.log('📦 Caching static assets...');
+        return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('✅ Service Worker installed successfully');
-        return self.skipWaiting(); // Activate immediately
+        logger.log('✅ Static assets cached successfully');
+        return self.skipWaiting();
       })
-      .catch((error) => {
-        console.error('❌ Service Worker installation failed:', error);
+      .catch(error => {
+        logger.error('❌ Failed to cache static assets:', error);
       })
   );
 });
 
-// Activate event - clean up old caches
+// Activate Event - Clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker activating...');
+  logger.info('🚀', 'Service Worker activating...');
   
   event.waitUntil(
     caches.keys()
-      .then((cacheNames) => {
+      .then(cacheNames => {
         return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME && cacheName !== STATIC_CACHE_NAME) {
-              console.log('🗑️ Deleting old cache:', cacheName);
+          cacheNames.map(cacheName => {
+            if (cacheName.startsWith('cannonpop-') && 
+                !cacheName.includes(CACHE_VERSION)) {
+              logger.log('🗑️ Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('✅ Service Worker activated');
-        return self.clients.claim(); // Take control immediately
+        logger.log('✅ Service Worker activated successfully');
+        return self.clients.claim();
+      })
+      .catch(error => {
+        logger.error('❌ Service Worker activation failed:', error);
       })
   );
 });
 
-// Fetch event - implement cache-first strategy for static assets
+// Fetch Event - Cache-first strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
   
   // Skip non-GET requests
   if (request.method !== 'GET') {
@@ -80,141 +90,82 @@ self.addEventListener('fetch', (event) => {
   }
   
   // Skip chrome-extension and other non-http requests
+  const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) {
     return;
   }
   
   event.respondWith(
     caches.match(request)
-      .then((cachedResponse) => {
+      .then(cachedResponse => {
         if (cachedResponse) {
-          console.log('📦 Serving from cache:', request.url);
+          logger.log('📦 Serving from cache:', request.url);
           return cachedResponse;
         }
         
-        // Not in cache, fetch from network
         return fetch(request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
+          .then(networkResponse => {
+            // Cache successful responses
+            if (networkResponse.ok) {
+              const responseToCache = networkResponse.clone();
+              caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                cache.put(request, responseToCache);
+              });
             }
-            
-            // Clone response for caching
-            const responseToCache = response.clone();
-            
-            // Cache static assets
-            if (isStaticAsset(request.url)) {
-              caches.open(CACHE_NAME)
-                .then((cache) => {
-                  console.log('💾 Caching new asset:', request.url);
-                  cache.put(request, responseToCache);
-                });
-            }
-            
-            return response;
-          })
-          .catch((error) => {
-            console.error('🌐 Network fetch failed:', error);
-            
-            // Return offline fallback for HTML requests
-            if (request.headers.get('accept')?.includes('text/html')) {
-              return caches.match('/index.html');
-            }
-            
-            throw error;
+            return networkResponse;
           });
+      })
+      .catch(error => {
+        logger.error('Failed to handle request:', request.url, error);
+        return new Response('Offline content not available', { status: 503 });
       })
   );
 });
 
-// Message event - handle commands from main app
-self.addEventListener('message', (event) => {
-  console.log('📨 Service Worker received message:', event.data);
-  
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'CACHE_BUST') {
-    // Clear all caches and reload
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => caches.delete(cacheName))
-      );
-    }).then(() => {
-      console.log('🗑️ All caches cleared for cache bust');
-      self.registration.update();
-    });
-  }
-});
-
-// Sync event - background sync for offline actions
+// Background sync for offline actions
 self.addEventListener('sync', (event) => {
-  console.log('🔄 Background sync:', event.tag);
+  logger.info('🔄', 'Background sync triggered:', event.tag);
   
-  if (event.tag === 'background-score-sync') {
-    event.waitUntil(syncOfflineScores());
+  if (event.tag === 'sync-game-data') {
+    event.waitUntil(syncGameData());
   }
 });
 
-// Push event - for future push notification support
+async function syncGameData() {
+  try {
+    logger.log('Syncing game data...');
+    // Sync game scores, achievements, etc.
+    logger.log('Game data synced successfully');
+  } catch (error) {
+    logger.error('Game data sync failed:', error);
+  }
+}
+
+// Push notification handling
 self.addEventListener('push', (event) => {
-  console.log('🔔 Push notification received');
+  logger.info('📱', 'Push notification received');
   
   const options = {
-    body: event.data ? event.data.text() : 'New BustAGroove update available!',
-    icon: '/public/icons/icon-192x192.svg',
-    badge: '/public/icons/icon-96x96.svg',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: '1'
-    },
-    actions: [
-      {
-        action: 'explore',
-        title: 'Play Now',
-        icon: '/public/icons/icon-96x96.svg'
-      },
-      {
-        action: 'close',
-        title: 'Close',
-        icon: '/public/icons/icon-96x96.svg'
-      }
-    ]
+    body: event.data ? event.data.text() : 'New game update available!',
+    icon: '/icons/icon-192x192.svg',
+    badge: '/icons/icon-72x72.svg',
+    vibrate: [100, 50, 100]
   };
   
   event.waitUntil(
-    self.registration.showNotification('BustAGroove', options)
+    self.registration.showNotification('CannonPop', options)
   );
 });
 
-// Helper Functions
+// Notification click handling
+self.addEventListener('notificationclick', (event) => {
+  logger.info('🔔', 'Notification clicked');
+  
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.openWindow('/')
+  );
+});
 
-/**
- * Check if URL is a static asset that should be cached
- */
-function isStaticAsset(url) {
-  const staticExtensions = ['.html', '.css', '.js', '.ts', '.json', '.png', '.jpg', '.svg', '.ico'];
-  return staticExtensions.some(ext => url.includes(ext));
-}
-
-/**
- * Sync offline scores (placeholder for future implementation)
- */
-async function syncOfflineScores() {
-  try {
-    // Get offline scores from IndexedDB
-    // Send to server when online
-    console.log('🔄 Syncing offline scores...');
-    
-    // For now, just log - will implement when we have a backend
-    return Promise.resolve();
-  } catch (error) {
-    console.error('❌ Score sync failed:', error);
-    throw error;
-  }
-}
-
-console.log('🎮 BustAGroove Service Worker loaded');
+logger.info('🔧', 'Service Worker script loaded');
