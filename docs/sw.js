@@ -17,7 +17,7 @@ const logger = {
   info: (emoji, ...args) => { if (isDev()) console.log(emoji, ...args); }
 };
 
-const CACHE_VERSION = '1.0.0';
+const CACHE_VERSION = '1.0.2';
 const CACHE_NAME = `cannonpop-cache-${CACHE_VERSION}`;
 const STATIC_CACHE_NAME = `cannonpop-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE_NAME = `cannonpop-dynamic-${CACHE_VERSION}`;
@@ -80,7 +80,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Cache-first strategy
+// Fetch Event - Network-first in development, cache-first in production
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   
@@ -95,6 +95,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // In development, use network-first strategy to get fresh content
+  if (isDev()) {
+    event.respondWith(
+      fetch(request)
+        .then(networkResponse => {
+          logger.log('🌐 Serving fresh from network:', request.url);
+          return networkResponse;
+        })
+        .catch(error => {
+          logger.log('📦 Network failed, trying cache:', request.url);
+          return caches.match(request).then(cachedResponse => {
+            return cachedResponse || new Response('Offline content not available', { status: 503 });
+          });
+        })
+    );
+    return;
+  }
+  
+  // Production: cache-first strategy
   event.respondWith(
     caches.match(request)
       .then(cachedResponse => {

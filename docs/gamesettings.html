@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Settings - CannonPop</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./vite.svg">
+    <meta name="theme-color" content="#2c1810">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="./icons/icon-192x192.svg">
+    <style>
+        :root {
+            --primary-color: #8d6e63;
+            --primary-hover: #7a5a50;
+            --secondary-color: #666;
+            --secondary-hover: #555;
+            --bg-color: #f5f5f5;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-color: #333;
+            --text-muted: #666;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #ff6b35;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .settings-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .settings-header h1 {
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .settings-header p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .back-button:hover {
+            background: var(--secondary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .settings-content {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-section-container {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .settings-section-container h3 {
+            color: var(--text-color);
+            margin: 0 0 1.5rem 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .setting-item {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .setting-item label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .setting-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+
+        .setting-item input[type="range"] {
+            width: 100%;
+            max-width: 300px;
+            margin-top: 0.5rem;
+            accent-color: var(--primary-color);
+        }
+
+        .setting-description {
+            margin-top: 0.5rem;
+            margin-left: 2.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .difficulty-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .difficulty-option {
+            padding: 1.5rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .difficulty-option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .difficulty-option.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .difficulty-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .difficulty-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .difficulty-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .difficulty-badge.easy { background: #4caf50; color: white; }
+        .difficulty-badge.normal { background: #2196f3; color: white; }
+        .difficulty-badge.hard { background: #ff9800; color: white; }
+        .difficulty-badge.expert { background: #f44336; color: white; }
+
+        .difficulty-option p {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .reset-button {
+            padding: 0.75rem 1.5rem;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-weight: 500;
+            width: 100%;
+        }
+
+        .reset-button:hover {
+            background: var(--secondary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .copyright-notice {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .copyright-notice a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .copyright-notice a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .settings-container {
+                padding: 1rem;
+            }
+
+            .settings-content {
+                padding: 1.5rem;
+            }
+
+            .settings-section-container {
+                padding: 1.5rem;
+            }
+
+            .navigation-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .back-button {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+
+            .difficulty-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+  <link rel="stylesheet" crossorigin href="./assets/app-2loOpyJh.css">
+</head>
+<body>
+    <div class="settings-container">
+        <header class="settings-header">
+            <h1>Game Settings</h1>
+            <p>Customize your CannonPop gameplay experience</p>
+        </header>
+        
+        <!-- Navigation Buttons -->
+        <div class="navigation-buttons">
+            <a href="settings.html" class="back-button">
+                ← Settings
+            </a>
+            <a href="index.html" class="back-button">
+                Game →
+            </a>
+        </div>
+        
+        <div class="settings-content">
+            <!-- Difficulty Selector Section -->
+            <div class="difficulty-selector-section settings-section-container">
+                <h3>Difficulty Level</h3>
+                <p class="setting-description">Choose your preferred difficulty level. Each level affects bubble speed, scoring, and special features.</p>
+                <div class="difficulty-options">
+                    <button class="difficulty-option" data-difficulty="easy">
+                        <div class="difficulty-header">
+                            <h4>Easy</h4>
+                            <span class="difficulty-badge easy">EASY</span>
+                        </div>
+                        <p>Slower bubbles, more time to aim, bonus points</p>
+                    </button>
+                    <button class="difficulty-option active" data-difficulty="normal">
+                        <div class="difficulty-header">
+                            <h4>Normal</h4>
+                            <span class="difficulty-badge normal">NORMAL</span>
+                        </div>
+                        <p>Standard speed and scoring, balanced gameplay</p>
+                    </button>
+                    <button class="difficulty-option" data-difficulty="hard">
+                        <div class="difficulty-header">
+                            <h4>Hard</h4>
+                            <span class="difficulty-badge hard">HARD</span>
+                        </div>
+                        <p>Faster bubbles, precise aiming required</p>
+                    </button>
+                    <button class="difficulty-option" data-difficulty="expert">
+                        <div class="difficulty-header">
+                            <h4>Expert</h4>
+                            <span class="difficulty-badge expert">EXPERT</span>
+                        </div>
+                        <p>Maximum speed, special bubble types, time pressure</p>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Gameplay Settings -->
+            <div class="gameplay-settings settings-section-container">
+                <h3>Gameplay Features</h3>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="show-next-bubble" checked />
+                        Show next bubble
+                    </label>
+                    <p class="setting-description">Display the next bubble to help with strategy</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="enable-power-ups" checked />
+                        Enable power-ups
+                    </label>
+                    <p class="setting-description">Include special power-up bubbles during gameplay</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="enable-combos" checked />
+                        Enable combo scoring
+                    </label>
+                    <p class="setting-description">Award bonus points for consecutive successful shots</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="auto-save" checked />
+                        Auto-save progress
+                    </label>
+                    <p class="setting-description">Automatically save your game progress</p>
+                </div>
+            </div>
+            
+            <!-- Visual Settings -->
+            <div class="visual-settings settings-section-container">
+                <h3>Visual Effects</h3>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="enable-animations" checked />
+                        Enable animations
+                    </label>
+                    <p class="setting-description">Show smooth transitions and visual effects</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="enable-particles" checked />
+                        Enable particle effects
+                    </label>
+                    <p class="setting-description">Show particle effects when bubbles pop</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="show-score-popup" checked />
+                        Show score popups
+                    </label>
+                    <p class="setting-description">Display floating score notifications</p>
+                </div>
+            </div>
+            
+            <!-- Accessibility Settings -->
+            <div class="accessibility-settings settings-section-container">
+                <h3>Accessibility</h3>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="high-contrast" />
+                        High contrast mode
+                    </label>
+                    <p class="setting-description">Increase color contrast for better visibility</p>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="reduce-motion" />
+                        Reduce motion
+                    </label>
+                    <p class="setting-description">Minimize animations for motion sensitivity</p>
+                </div>
+                <div class="setting-item">
+                    <label for="bubble-size">Bubble Size: <span id="bubble-size-value">Normal</span></label>
+                    <input type="range" id="bubble-size" min="0.8" max="1.2" value="1" step="0.1" />
+                    <p class="setting-description">Adjust bubble size for better visibility</p>
+                </div>
+            </div>
+            
+            <!-- Reset Settings -->
+            <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin-top: 2rem;">
+                <button id="reset-game-settings" class="reset-button">
+                    Reset Game Settings
+                </button>
+            </div>
+        </div>
+        
+        <!-- Bottom Navigation Buttons -->
+        <div class="navigation-buttons" style="margin-top: 2rem;">
+            <a href="settings.html" class="back-button">
+                ← Settings
+            </a>
+            <a href="index.html" class="back-button">
+                Game →
+            </a>
+        </div>
+    </div>
+    
+    <!-- Copyright Notice -->
+    <div class="copyright-notice">
+        <p>&copy; Chase Pettet, <a href="http://523.life" target="_blank" rel="noopener noreferrer">523.life</a></p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Difficulty selection
+            const difficultyOptions = document.querySelectorAll('.difficulty-option');
+            difficultyOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    difficultyOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const difficulty = this.dataset.difficulty;
+                    // Save difficulty preference
+                    const settings = JSON.parse(localStorage.getItem('cannonpop_settings') || '{}');
+                    settings.difficulty = difficulty;
+                    localStorage.setItem('cannonpop_settings', JSON.stringify(settings));
+                    
+                    console.log('Difficulty changed to:', difficulty);
+                });
+            });
+            
+            // Bubble size slider
+            const bubbleSizeSlider = document.getElementById('bubble-size');
+            const bubbleSizeValue = document.getElementById('bubble-size-value');
+            
+            bubbleSizeSlider.addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                let label = 'Normal';
+                if (value < 0.9) label = 'Small';
+                else if (value > 1.1) label = 'Large';
+                
+                bubbleSizeValue.textContent = label;
+                
+                // Save setting
+                const settings = JSON.parse(localStorage.getItem('cannonpop_settings') || '{}');
+                settings.bubbleSize = value;
+                localStorage.setItem('cannonpop_settings', JSON.stringify(settings));
+            });
+            
+            // Reset button
+            document.getElementById('reset-game-settings').addEventListener('click', function() {
+                if (confirm('Are you sure you want to reset all game settings to defaults?')) {
+                    // Reset to defaults
+                    const defaultSettings = {
+                        difficulty: 'normal',
+                        showNextBubble: true,
+                        enablePowerUps: true,
+                        enableCombos: true,
+                        autoSave: true,
+                        enableAnimations: true,
+                        enableParticles: true,
+                        showScorePopup: true,
+                        highContrast: false,
+                        reduceMotion: false,
+                        bubbleSize: 1.0
+                    };
+                    
+                    localStorage.setItem('cannonpop_settings', JSON.stringify(defaultSettings));
+                    
+                    // Reload the page to reflect changes
+                    window.location.reload();
+                }
+            });
+            
+            // Load saved settings
+            loadSettings();
+        });
+        
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('cannonpop_settings') || '{}');
+            
+            // Load difficulty
+            const difficulty = settings.difficulty || 'normal';
+            const difficultyOption = document.querySelector(`[data-difficulty="${difficulty}"]`);
+            if (difficultyOption) {
+                document.querySelectorAll('.difficulty-option').forEach(opt => opt.classList.remove('active'));
+                difficultyOption.classList.add('active');
+            }
+            
+            // Load checkbox settings
+            const checkboxSettings = {
+                'show-next-bubble': settings.showNextBubble !== false,
+                'enable-power-ups': settings.enablePowerUps !== false,
+                'enable-combos': settings.enableCombos !== false,
+                'auto-save': settings.autoSave !== false,
+                'enable-animations': settings.enableAnimations !== false,
+                'enable-particles': settings.enableParticles !== false,
+                'show-score-popup': settings.showScorePopup !== false,
+                'high-contrast': settings.highContrast === true,
+                'reduce-motion': settings.reduceMotion === true
+            };
+            
+            Object.entries(checkboxSettings).forEach(([id, value]) => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) checkbox.checked = value;
+            });
+            
+            // Load bubble size
+            const bubbleSize = settings.bubbleSize || 1.0;
+            const bubbleSizeSlider = document.getElementById('bubble-size');
+            const bubbleSizeValue = document.getElementById('bubble-size-value');
+            if (bubbleSizeSlider) {
+                bubbleSizeSlider.value = bubbleSize;
+                let label = 'Normal';
+                if (bubbleSize < 0.9) label = 'Small';
+                else if (bubbleSize > 1.1) label = 'Large';
+                bubbleSizeValue.textContent = label;
+            }
+        }
+        
+        // Save settings when changed
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox') {
+                const settings = JSON.parse(localStorage.getItem('cannonpop_settings') || '{}');
+                
+                const settingMap = {
+                    'show-next-bubble': 'showNextBubble',
+                    'enable-power-ups': 'enablePowerUps',
+                    'enable-combos': 'enableCombos',
+                    'auto-save': 'autoSave',
+                    'enable-animations': 'enableAnimations',
+                    'enable-particles': 'enableParticles',
+                    'show-score-popup': 'showScorePopup',
+                    'high-contrast': 'highContrast',
+                    'reduce-motion': 'reduceMotion'
+                };
+                
+                const settingKey = settingMap[e.target.id];
+                if (settingKey) {
+                    settings[settingKey] = e.target.checked;
+                    localStorage.setItem('cannonpop_settings', JSON.stringify(settings));
+                }
+            }
+        });
+    </script>
+</body>
+</html>

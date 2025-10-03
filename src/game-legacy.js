@@ -1,20 +1,22 @@
 /**
- * BustAGroove - Phaser Game Implementation
+ * CannonPop - Phaser Game Implementation
  * Mobile-first bubble shooter with advanced PWA patterns
+ * Updated: 2024-10-03 4:30 PM - FIXED INFINITE RECURSION BUG
  */
 
-// Inline logger for legacy game code (no ES6 modules)
+// FIXED: Inline logger for legacy game code (no ES6 modules)
 const isDev = () => {
   return window.location.hostname === 'localhost' || 
          window.location.hostname.includes('127.0.0.1') ||
          localStorage.getItem('debug') === 'true';
 };
 
+// CRITICAL FIX: Use console.log directly to prevent infinite recursion
 const logger = {
-  log: (...args) => { if (isDev()) logger.log(...args); },
-  warn: (...args) => { if (isDev()) logger.warn(...args); },
-  error: (...args) => { logger.error(...args); }, // Always log errors
-  info: (emoji, ...args) => { if (isDev()) logger.log(emoji, ...args); }
+  log: (...args) => { if (isDev()) console.log('[GAME]', ...args); },
+  warn: (...args) => { if (isDev()) console.warn('[GAME]', ...args); },
+  error: (...args) => { console.error('[GAME]', ...args); }, // Always log errors
+  info: (emoji, ...args) => { if (isDev()) console.log('[GAME]', emoji, ...args); }
 };
 
 // Mobile-First Responsive Game Configuration
@@ -628,8 +630,12 @@ function create() {
     changeGameState.call(this, GAME_STATES.MENU);
     
     // Notify parent that game is loaded
-    if (window.sendToParent) {
-        window.sendToParent({ event: 'gameLoaded' });
+    try {
+        if (window.handleGameLoaded) {
+            window.handleGameLoaded();
+        }
+    } catch (e) {
+        console.log('Could not notify parent:', e);
     }
     
     logger.log('✅ BustAGroove game initialized');
@@ -887,33 +893,43 @@ function createLauncher() {
     // Create cannon container for grouped elements
     gameState.launcher = this.add.container(launcherX, launcherY);
     
-    // Create cannon base (wooden platform)
-    const cannonBase = this.add.rectangle(0, 20, 80, 25, 0x8b4513);
-    cannonBase.setStrokeStyle(2, 0x654321);
+    // Create cannon base (sturdy metal platform)
+    const cannonBase = this.add.rectangle(0, 20, 90, 30, 0x444444);
+    cannonBase.setStrokeStyle(3, 0x222222);
     gameState.launcher.add(cannonBase);
     
-    // Create cannon wheels
-    const leftWheel = this.add.circle(-25, 32, 12, 0x444444);
-    leftWheel.setStrokeStyle(2, 0x222222);
-    const rightWheel = this.add.circle(25, 32, 12, 0x444444);
-    rightWheel.setStrokeStyle(2, 0x222222);
-    gameState.launcher.add([leftWheel, rightWheel]);
+    // Create cannon support legs instead of wheels
+    const leftLeg = this.add.rectangle(-30, 35, 15, 20, 0x333333);
+    leftLeg.setStrokeStyle(2, 0x111111);
+    const rightLeg = this.add.rectangle(30, 35, 15, 20, 0x333333);
+    rightLeg.setStrokeStyle(2, 0x111111);
+    gameState.launcher.add([leftLeg, rightLeg]);
+    
+    // Add cannon base details
+    const baseDetail = this.add.rectangle(0, 15, 70, 8, 0x555555);
+    baseDetail.setStrokeStyle(1, 0x333333);
+    gameState.launcher.add(baseDetail);
     
     // Create cannon barrel (main tube) - store reference for rotation
-    gameState.cannonBarrel = this.add.rectangle(0, -5, 60, 20, 0x666666);
-    gameState.cannonBarrel.setStrokeStyle(2, 0x444444);
+    gameState.cannonBarrel = this.add.rectangle(0, -5, 70, 18, 0x555555);
+    gameState.cannonBarrel.setStrokeStyle(2, 0x333333);
     gameState.cannonBarrel.setOrigin(0.8, 0.5); // Set rotation point near the base
     gameState.launcher.add(gameState.cannonBarrel);
     
-    // Create cannon muzzle (darker end)
-    const cannonMuzzle = this.add.circle(0, -5, 15, 0x333333);
-    cannonMuzzle.setStrokeStyle(2, 0x111111);
+    // Create cannon muzzle (opening at the end)
+    const cannonMuzzle = this.add.circle(-25, -5, 12, 0x222222);
+    cannonMuzzle.setStrokeStyle(3, 0x111111);
     gameState.launcher.add(cannonMuzzle);
     
-    // Create decorative cannon details
-    const cannonRim = this.add.circle(0, -5, 18, 0x555555, 0);
-    cannonRim.setStrokeStyle(3, 0x777777);
-    gameState.launcher.add(cannonRim);
+    // Create cannon barrel bands (decorative metal rings)
+    const band1 = this.add.rectangle(-10, -5, 4, 22, 0x444444);
+    const band2 = this.add.rectangle(5, -5, 4, 22, 0x444444);
+    gameState.launcher.add([band1, band2]);
+    
+    // Create cannon pivot/mount
+    const cannonPivot = this.add.circle(15, -5, 8, 0x333333);
+    cannonPivot.setStrokeStyle(2, 0x111111);
+    gameState.launcher.add(cannonPivot);
     
     // Add carnival-style decorations
     const leftFlag = this.add.triangle(-35, -10, 0, 0, 8, -12, 0, -8, 0xff6b35);
@@ -1105,8 +1121,8 @@ function shootBubble(targetX, targetY) {
     gameState.currentBubble.setBounce(0.8, 0.8);
     gameState.currentBubble.setCollideWorldBounds(true);
     
-    // Add subtle glow effect while in flight
-    addBalloonGlow.call(this, gameState.currentBubble);
+    // Disabled glow effect to prevent flashing
+    // addBalloonGlow.call(this, gameState.currentBubble);
     
     // Add collision with other bubbles
     this.physics.add.collider(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
@@ -1162,15 +1178,15 @@ function addBalloonGlow(bubble) {
     // Make glow follow the bubble
     bubble.glow = glow;
     
-    // Add gentle pulsing animation
-    this.tweens.add({
-        targets: glow,
-        alpha: 0.3,
-        duration: 800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-    });
+    // Disabled pulsing animation to prevent flashing
+    // this.tweens.add({
+    //     targets: glow,
+    //     alpha: 0.3,
+    //     duration: 800,
+    //     yoyo: true,
+    //     repeat: -1,
+    //     ease: 'Sine.easeInOut'
+    // });
     
     // Update glow position to follow the bubble
     bubble.updateGlow = () => {
@@ -2472,11 +2488,8 @@ function updateScore(points) {
     }
     
     // Notify parent Svelte app
-    if (window.sendToParent) {
-        window.sendToParent({
-            event: 'scoreUpdate',
-            score: gameState.score
-        });
+    if (window.handleScoreUpdate) {
+        window.handleScoreUpdate(gameState.score);
     }
 }
 
@@ -3176,3 +3189,58 @@ window.audioManager = audioManager;
 window.analytics = analytics;
 window.socialManager = socialManager;
 window.performanceManager = performanceManager;
+
+// Make initialization function available globally for manual triggering
+window.initializeCannonPopGame = function() {
+    // Check if already initialized
+    if (window.gameInstance) {
+        logger.log('🎮 Game already initialized');
+        return;
+    }
+    
+    logger.log('🚀 Manual game initialization triggered');
+    
+    // Since DOM is already loaded when called manually, just initialize directly
+    if (document.readyState !== 'loading') {
+        // Manually trigger the initialization logic
+        logger.log('🎯 Initializing Mobile-Optimized Phaser game...');
+        logger.log('🔍 DOM loaded, Phaser available:', typeof Phaser !== 'undefined');
+        logger.log('🔍 Game container exists:', !!document.getElementById('game-container'));
+        
+        // Remove loading message
+        const loading = document.querySelector('.loading');
+        if (loading) {
+            logger.log('🔍 Removing loading message');
+            loading.style.display = 'none';
+        }
+        
+        try {
+            // Create Phaser game instance with mobile optimizations
+            logger.log('🔍 Creating Phaser game with config:', GAME_CONFIG);
+            game = new Phaser.Game(GAME_CONFIG);
+            window.gameInstance = game;
+            
+            logger.log('✅ Mobile-optimized Phaser game created successfully');
+            
+            // Add game ready event listener
+            game.events.on('ready', () => {
+                logger.log('🎮 Phaser game is ready and running!');
+            });
+            
+        } catch (error) {
+            logger.error('❌ Error creating Phaser game:', error);
+            
+            // Show error message in the game container
+            const container = document.getElementById('game-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="color: #f5f1e8; text-align: center; padding: 20px;">
+                        <h3>Game Loading Error</h3>
+                        <p>Failed to initialize the game engine.</p>
+                        <p style="font-size: 12px; opacity: 0.7;">Check console for details.</p>
+                    </div>
+                `;
+            }
+        }
+    }
+};
