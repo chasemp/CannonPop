@@ -25,7 +25,7 @@ const GAME_CONFIG = {
     width: 400,
     height: 600,
     parent: 'game-container',
-    backgroundColor: '#b5978c', // Lighter warm brown for better contrast
+    backgroundColor: '#fff5e1', // Match UI background (light cream)
     physics: {
         default: 'arcade',
         arcade: {
