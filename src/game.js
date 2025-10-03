@@ -170,9 +170,6 @@ function create() {
     // Initialize grid system
     initializeGrid.call(this);
     
-    // Create playable area border
-    createPlayAreaBorder.call(this);
-    
     // Create launcher
     createLauncher.call(this);
     
@@ -399,41 +396,6 @@ function populateInitialGrid() {
             }
         }
     }
-}
-
-/**
- * Create border around the playable area
- */
-function createPlayAreaBorder() {
-    // Calculate the actual bubble grid dimensions only
-    // Width: 8 columns of bubbles (diameter 40 each)
-    const gridWidth = GRID_WIDTH * BUBBLE_RADIUS * 2;
-    // Height: 12 rows with vertical spacing of 1.7 * radius
-    const gridHeight = GRID_HEIGHT * BUBBLE_RADIUS * 1.7;
-    
-    // Border frame - just around the bubble area with minimal padding
-    const padding = 10; // Small padding around bubbles
-    const borderX = GRID_OFFSET_X - padding;
-    const borderY = GRID_OFFSET_Y - padding;
-    const borderWidth = gridWidth + (padding * 2);
-    const borderHeight = gridHeight + padding; // Less padding at bottom
-    
-    // Create graphics object for the border
-    const graphics = this.add.graphics();
-    
-    // Draw thick outer border (dark brown frame)
-    graphics.lineStyle(6, 0x3d2e22, 1); // Very dark brown
-    graphics.strokeRect(borderX, borderY, borderWidth, borderHeight);
-    
-    // Draw inner highlight border (lighter accent for depth)
-    graphics.lineStyle(2, 0x9d8e82, 0.8); // Light brown highlight
-    graphics.strokeRect(borderX + 6, borderY + 6, borderWidth - 12, borderHeight - 12);
-    
-    // Set depth to be below bubbles but above background
-    graphics.setDepth(5);
-    
-    // Store reference for potential cleanup
-    gameState.playAreaBorder = graphics;
 }
 
 /**
