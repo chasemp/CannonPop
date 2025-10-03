@@ -1194,20 +1194,29 @@ function showMenu() {
     logoImage.setScale(scale);
     titleContainer.add(logoImage);
     
-    // Subtitle - positioned below the logo
-    const subtitle = this.add.text(0, 80, 'Tap and shoot bubbles\nMatch 3+ to clear\nClear all bubbles to win!', {
-        fontSize: '14px',
+    // Tagline - positioned below the logo
+    const tagline = this.add.text(0, 80, 'Shoot cannons, pop balloons.', {
+        fontSize: '18px',
         fill: '#f5f1e8',
+        fontFamily: 'Arial',
+        fontStyle: 'italic',
+        align: 'center'
+    }).setOrigin(0.5);
+    
+    // Instructions - positioned below tagline
+    const instructions = this.add.text(0, 110, 'Match 3+ to clear • Clear all to win!', {
+        fontSize: '13px',
+        fill: '#d5d1c8',
         fontFamily: 'Arial',
         align: 'center'
     }).setOrigin(0.5);
     
-    // Start button - positioned below subtitle
-    const startButton = this.add.rectangle(0, 150, 200, 50, 0x8d6e63);
+    // Start button - positioned below instructions
+    const startButton = this.add.rectangle(0, 160, 200, 50, 0x8d6e63);
     startButton.setStrokeStyle(2, 0xf5f1e8);
     startButton.setInteractive({ useHandCursor: true });
     
-    const startText = this.add.text(0, 150, 'Start Game', {
+    const startText = this.add.text(0, 160, 'Start Game', {
         fontSize: '18px',
         fill: '#f5f1e8',
         fontFamily: 'Arial',
@@ -1215,7 +1224,7 @@ function showMenu() {
     }).setOrigin(0.5);
     
     // Add all to container
-    gameState.menuContainer.add([menuBg, titleContainer, subtitle, startButton, startText]);
+    gameState.menuContainer.add([menuBg, titleContainer, tagline, instructions, startButton, startText]);
     
     // Store button reference for click handling
     startButton.buttonType = 'start';
