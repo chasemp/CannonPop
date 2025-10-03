@@ -1016,7 +1016,6 @@ function createBubblePopEffect(x, y, sprite) {
 function createBalloonTexture(color) {
     const graphics = this.add.graphics();
     const balloonRadius = BUBBLE_RADIUS;
-    const stringLength = 8;
     
     // Create balloon body with solid color - no gradients or complex effects
     const colorHex = getColorHex(color);
@@ -1027,20 +1026,9 @@ function createBalloonTexture(color) {
     graphics.fillStyle(0xffffff, 0.1);
     graphics.fillEllipse(balloonRadius - 4, balloonRadius - 5, 4, 6);
     
-    // Add simple balloon string
-    graphics.lineStyle(1, 0x333333, 0.8);
-    graphics.beginPath();
-    graphics.moveTo(balloonRadius, balloonRadius * 2 - 2);
-    graphics.lineTo(balloonRadius + 1, balloonRadius * 2 + stringLength);
-    graphics.strokePath();
-    
-    // Add small knot at the end
-    graphics.fillStyle(0x333333, 0.7);
-    graphics.fillCircle(balloonRadius + 1, balloonRadius * 2 + stringLength, 1);
-    
-    // Generate clean texture
+    // Generate clean texture (no string!)
     const textureWidth = balloonRadius * 2 + 4;
-    const textureHeight = balloonRadius * 2 + stringLength + 4;
+    const textureHeight = balloonRadius * 2 + 4;
     graphics.generateTexture(color + '_bubble', textureWidth, textureHeight);
     
     // Clean up graphics object
