@@ -1745,3 +1745,32 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export for global access
 window.gameState = gameState;
 window.GAME_CONFIG = GAME_CONFIG;
+
+// Global game control functions
+window.restartGame = function() {
+    logger.log('🔄 Restart game requested');
+    if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+        const scene = window.gameInstance.scene.scenes[0];
+        // Reset game state and restart
+        changeGameState.call(scene, GAME_STATES.PLAYING, { restart: true });
+        logger.log('✅ Game restarted');
+    }
+};
+
+window.pauseGame = function() {
+    logger.log('⏸️ Pause game requested');
+    if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+        const scene = window.gameInstance.scene.scenes[0];
+        changeGameState.call(scene, GAME_STATES.PAUSED);
+        logger.log('✅ Game paused');
+    }
+};
+
+window.resumeGame = function() {
+    logger.log('▶️ Resume game requested');
+    if (window.gameInstance && window.gameInstance.scene.scenes[0]) {
+        const scene = window.gameInstance.scene.scenes[0];
+        changeGameState.call(scene, GAME_STATES.PLAYING);
+        logger.log('✅ Game resumed');
+    }
+};
