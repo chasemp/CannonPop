@@ -11,12 +11,61 @@ const isDev = () => {
          localStorage.getItem('debug') === 'true';
 };
 
-// CRITICAL FIX: Use console.log directly to prevent infinite recursion
+// Enhanced logging with error tracking and recovery
 const logger = {
   log: (...args) => { if (isDev()) console.log('[GAME]', ...args); },
   warn: (...args) => { if (isDev()) console.warn('[GAME]', ...args); },
-  error: (...args) => { console.error('[GAME]', ...args); }, // Always log errors
+  error: (...args) => { 
+    console.error('[GAME]', ...args);
+    // Track errors for debugging
+    if (window.gameErrorCount === undefined) window.gameErrorCount = 0;
+    window.gameErrorCount++;
+  },
   info: (emoji, ...args) => { if (isDev()) console.log('[GAME]', emoji, ...args); }
+};
+
+// Error recovery system
+const ErrorRecovery = {
+  maxRetries: 3,
+  retryCount: 0,
+  
+  handleError(error, context, retryFn) {
+    logger.error(`❌ Error in ${context}:`, error);
+    
+    if (this.retryCount < this.maxRetries && retryFn) {
+      this.retryCount++;
+      logger.warn(`🔄 Retrying ${context} (attempt ${this.retryCount}/${this.maxRetries})`);
+      setTimeout(() => {
+        try {
+          retryFn();
+        } catch (retryError) {
+          this.handleError(retryError, context, retryFn);
+        }
+      }, 1000 * this.retryCount);
+    } else {
+      logger.error(`💥 Max retries exceeded for ${context}`);
+      this.showErrorToUser(context, error);
+    }
+  },
+  
+  showErrorToUser(context, error) {
+    const container = document.getElementById('game-container');
+    if (container) {
+      container.innerHTML = `
+        <div style="color: #f5f1e8; text-align: center; padding: 20px; background: rgba(0,0,0,0.8); border-radius: 8px;">
+          <h3>⚠️ Game Error</h3>
+          <p>Something went wrong: ${context}</p>
+          <button onclick="location.reload()" style="padding: 8px 16px; margin-top: 10px; background: #8d6e63; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Reload Game
+          </button>
+        </div>
+      `;
+    }
+  },
+  
+  reset() {
+    this.retryCount = 0;
+  }
 };
 
 // Mobile-First Responsive Game Configuration
@@ -226,37 +275,109 @@ function update() {
  * Change game state with proper cleanup and initialization
  */
 function changeGameState(newState, data = {}) {
-    const oldState = gameState.currentState;
-    logger.log(`🔄 State change: ${oldState} → ${newState}`);
-    
-    // Exit old state
-    exitState.call(this, oldState);
-    
-    // Update state
-    gameState.currentState = newState;
-    gameState.lastStateChangeTime = Date.now();
-    
-    // Disable shooting temporarily to prevent accidental shots
-    gameState.canShoot = false;
-    
-    // Re-enable shooting after a short delay when entering PLAYING state
-    if (newState === GAME_STATES.PLAYING) {
-        setTimeout(() => {
-            gameState.canShoot = true;
-        }, 300); // 300ms delay
-    }
-    
-    // Enter new state
-    enterState.call(this, newState, data);
-    
-    // Notify parent app
-    if (window.handleScoreUpdate) {
-        window.handleScoreUpdate({
-            event: 'stateChanged',
-            oldState: oldState,
-            newState: newState,
-            data: data
+    try {
+        const oldState = gameState.currentState;
+        logger.log(`🔄 State change: ${oldState} → ${newState}`);
+        
+        // Validate state transition
+        if (!isValidStateTransition(oldState, newState)) {
+            logger.warn(`⚠️ Invalid state transition: ${oldState} → ${newState}`);
+            return;
+        }
+        
+        // Exit old state with cleanup
+        exitState.call(this, oldState);
+        
+        // Update state
+        gameState.currentState = newState;
+        gameState.lastStateChangeTime = Date.now();
+        
+        // Disable shooting temporarily to prevent accidental shots
+        gameState.canShoot = false;
+        
+        // Re-enable shooting after a short delay when entering PLAYING state
+        if (newState === GAME_STATES.PLAYING) {
+            setTimeout(() => {
+                gameState.canShoot = true;
+            }, 300); // 300ms delay
+        }
+        
+        // Enter new state
+        enterState.call(this, newState, data);
+        
+        // Notify parent app
+        if (window.handleScoreUpdate) {
+            window.handleScoreUpdate({
+                event: 'stateChanged',
+                oldState: oldState,
+                newState: newState,
+                data: data
+            });
+        }
+        
+    } catch (error) {
+        ErrorRecovery.handleError(error, 'changeGameState', () => {
+            // Try to recover by resetting to menu state
+            gameState.currentState = GAME_STATES.MENU;
+            enterState.call(this, GAME_STATES.MENU);
         });
+    }
+}
+
+/**
+ * Validate state transitions
+ */
+function isValidStateTransition(from, to) {
+    const validTransitions = {
+        [GAME_STATES.MENU]: [GAME_STATES.PLAYING, GAME_STATES.LOADING],
+        [GAME_STATES.LOADING]: [GAME_STATES.MENU, GAME_STATES.PLAYING],
+        [GAME_STATES.PLAYING]: [GAME_STATES.PAUSED, GAME_STATES.GAME_OVER, GAME_STATES.LEVEL_COMPLETE],
+        [GAME_STATES.PAUSED]: [GAME_STATES.PLAYING, GAME_STATES.MENU],
+        [GAME_STATES.GAME_OVER]: [GAME_STATES.MENU, GAME_STATES.PLAYING],
+        [GAME_STATES.LEVEL_COMPLETE]: [GAME_STATES.PLAYING, GAME_STATES.MENU]
+    };
+    
+    return validTransitions[from] && validTransitions[from].includes(to);
+}
+
+/**
+ * Clean up resources and prevent memory leaks
+ */
+function cleanupResources() {
+    try {
+        // Clean up tweens
+        if (this.tweens) {
+            this.tweens.killAll();
+        }
+        
+        // Clean up physics groups
+        if (gameState.bubbleGroup) {
+            gameState.bubbleGroup.clear(true, true);
+        }
+        
+        // Clean up UI elements
+        if (gameState.menuContainer) {
+            gameState.menuContainer.destroy();
+            gameState.menuContainer = null;
+        }
+        
+        if (gameState.gameOverContainer) {
+            gameState.gameOverContainer.destroy();
+            gameState.gameOverContainer = null;
+        }
+        
+        // Clean up aiming line
+        if (gameState.aimingLine) {
+            gameState.aimingLine.clear();
+        }
+        
+        // Reset error recovery
+        ErrorRecovery.reset();
+        
+        logger.log('🧹 Resources cleaned up');
+        
+    } catch (error) {
+        logger.error('❌ Error during cleanup:', error);
     }
 }
 
@@ -264,22 +385,40 @@ function changeGameState(newState, data = {}) {
  * Exit current state - cleanup
  */
 function exitState(state) {
-    switch (state) {
-        case GAME_STATES.MENU:
-            hideMenu.call(this);
-            break;
-            
-        case GAME_STATES.PLAYING:
-            // Pause any ongoing animations
-            break;
-            
-        case GAME_STATES.GAME_OVER:
-            hideGameOver.call(this);
-            break;
-            
-        case GAME_STATES.LEVEL_COMPLETE:
-            hideLevelComplete.call(this);
-            break;
+    try {
+        switch (state) {
+            case GAME_STATES.MENU:
+                hideMenu.call(this);
+                break;
+                
+            case GAME_STATES.PLAYING:
+                // Pause any ongoing animations
+                if (this.tweens) {
+                    this.tweens.pauseAll();
+                }
+                break;
+                
+            case GAME_STATES.GAME_OVER:
+                hideGameOver.call(this);
+                break;
+                
+            case GAME_STATES.LEVEL_COMPLETE:
+                hideLevelComplete.call(this);
+                break;
+                
+            case GAME_STATES.PAUSED:
+                // Resume tweens when exiting pause
+                if (this.tweens) {
+                    this.tweens.resumeAll();
+                }
+                break;
+        }
+        
+        // Always clean up resources when exiting any state
+        cleanupResources.call(this);
+        
+    } catch (error) {
+        logger.error(`❌ Error exiting state ${state}:`, error);
     }
 }
 
@@ -618,141 +757,230 @@ function handlePointerUp(pointer) {
 }
 
 /**
- * Shoot a bubble towards the target position
+ * Shoot a bubble towards the target position with comprehensive validation
  */
 function shootBubble(targetX, targetY) {
-    if (!gameState.currentBubble) return;
-    
-    // Increment shots counter
-    gameState.shotsFired++;
-    
-    // Get launcher position
-    const launcherX = GAME_CONFIG.width / 2;
-    const launcherY = GAME_CONFIG.height - 60;
-    
-    // Calculate velocity based on target
-    const angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, targetX, targetY);
-    const speed = 300;
-    const velocityX = Math.cos(angle) * speed;
-    const velocityY = Math.sin(angle) * speed;
-    
-    // Set bubble physics
-    gameState.currentBubble.setVelocity(velocityX, velocityY);
-    gameState.currentBubble.setBounce(0.8, 0.8);
-    gameState.currentBubble.setCollideWorldBounds(true);
-    
-    // Mark bubble as "in flight" to prevent multiple collision handling
-    gameState.currentBubble.setData('inFlight', true);
-    
-    // Use overlap instead of collider to have more control
-    this.physics.add.overlap(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
-        // Only handle collision once
-        if (bubble.getData('inFlight')) {
-            bubble.setData('inFlight', false);
-            snapBubbleToGrid.call(this, bubble, target);
+    try {
+        // Validate game state
+        if (!validateGameState(GAME_STATES.PLAYING)) {
+            logger.warn('⚠️ Cannot shoot - invalid game state');
+            return;
         }
-    }, null, this);
-    
-    // Clear current bubble reference
-    gameState.currentBubble = null;
-    
-    // Notify parent of shot fired (update shots counter)
-    if (window.handleScoreUpdate) {
-        window.handleScoreUpdate({
-            event: 'gameStats',
-            score: gameState.score,
-            level: gameState.level,
-            shots: gameState.shotsFired
+        
+        // Validate shooting is allowed
+        if (!gameState.canShoot) {
+            logger.warn('⚠️ Cannot shoot - shooting disabled');
+            return;
+        }
+        
+        // Validate current bubble exists
+        if (!gameState.currentBubble || !gameState.currentBubble.active) {
+            logger.warn('⚠️ Cannot shoot - no current bubble');
+            return;
+        }
+        
+        // Validate and clamp input coordinates
+        const validatedCoords = validateInputCoordinates(targetX, targetY);
+        targetX = validatedCoords.x;
+        targetY = validatedCoords.y;
+        
+        // Throttle shooting to prevent rapid-fire
+        if (gameState.lastShotTime && Date.now() - gameState.lastShotTime < 200) {
+            logger.warn('⚠️ Shooting too fast - throttled');
+            return;
+        }
+        
+        // Increment shots counter
+        gameState.shotsFired++;
+        gameState.lastShotTime = Date.now();
+        
+        // Get launcher position
+        const launcherX = GAME_CONFIG.width / 2;
+        const launcherY = GAME_CONFIG.height - 60;
+        
+        // Calculate velocity based on target
+        const angle = Phaser.Math.Angle.Between(launcherX, launcherY - 40, targetX, targetY);
+        const speed = 300;
+        const velocityX = Math.cos(angle) * speed;
+        const velocityY = Math.sin(angle) * speed;
+        
+        // Validate velocity is reasonable
+        if (isNaN(velocityX) || isNaN(velocityY) || Math.abs(velocityX) > 1000 || Math.abs(velocityY) > 1000) {
+            logger.error('❌ Invalid velocity calculated:', velocityX, velocityY);
+            return;
+        }
+        
+        // Set bubble physics
+        gameState.currentBubble.setVelocity(velocityX, velocityY);
+        gameState.currentBubble.setBounce(0.8, 0.8);
+        gameState.currentBubble.setCollideWorldBounds(true);
+        
+        // Mark bubble as "in flight" to prevent multiple collision handling
+        gameState.currentBubble.setData('inFlight', true);
+        
+        // Use continuous collision detection for precise placement
+        this.physics.add.overlap(gameState.currentBubble, gameState.bubbleGroup, (bubble, target) => {
+            // Only handle collision once
+            if (bubble.getData('inFlight')) {
+                bubble.setData('inFlight', false);
+                handleBubbleCollision.call(this, bubble, target);
+            }
+        }, null, this);
+        
+        // Also check for wall collisions
+        this.physics.add.collider(gameState.currentBubble, this.physics.world.bounds, (bubble) => {
+            if (bubble.getData('inFlight')) {
+                bubble.setData('inFlight', false);
+                handleWallCollision.call(this, bubble);
+            }
+        });
+        
+        // Clear current bubble reference
+        gameState.currentBubble = null;
+        
+        // Notify parent of shot fired (update shots counter)
+        if (window.handleScoreUpdate) {
+            window.handleScoreUpdate({
+                event: 'gameStats',
+                score: gameState.score,
+                level: gameState.level,
+                shots: gameState.shotsFired
+            });
+        }
+        
+        // Create next bubble after a short delay
+        this.time.delayedCall(500, () => {
+            createNewBubble.call(this);
+        });
+        
+    } catch (error) {
+        ErrorRecovery.handleError(error, 'shootBubble', () => {
+            // Retry by creating a new bubble
+            createNewBubble.call(this);
         });
     }
-    
-    // Create next bubble after a short delay
-    this.time.delayedCall(500, () => {
-        createNewBubble.call(this);
-    });
 }
 
 /**
- * Snap a fired bubble to the grid when it collides
+ * Handle collision between fired bubble and existing bubble
  */
-function snapBubbleToGrid(firedBubble, targetBubble) {
-    // Immediately disable physics to prevent passing through
+function handleBubbleCollision(firedBubble, targetBubble) {
+    // Stop the bubble immediately
     firedBubble.setVelocity(0, 0);
     firedBubble.body.enable = false;
     
-    // Get the target bubble's grid position
-    const targetGridPos = worldToGrid(targetBubble.x, targetBubble.y);
+    // Calculate precise collision point and find best grid position
+    const collisionPoint = calculateCollisionPoint(firedBubble, targetBubble);
+    const gridPos = findBestGridPosition(collisionPoint.x, collisionPoint.y);
     
-    // Find the nearest empty neighbor to the target, closest to fired bubble's position
-    const emptyPos = findNearestEmptyNeighbor(targetGridPos.col, targetGridPos.row, firedBubble.x, firedBubble.y);
-    
-    if (!emptyPos) {
-        // Fallback: try the fired bubble's current position
-        const firedGridPos = worldToGrid(firedBubble.x, firedBubble.y);
-        if (isValidGridPosition(firedGridPos.col, firedGridPos.row) && 
-            !gameState.grid[firedGridPos.row][firedGridPos.col]) {
-            const worldPos = gridToWorld(firedGridPos.col, firedGridPos.row);
-            firedBubble.setPosition(worldPos.x, worldPos.y);
-            
-            // Add to bubble group and grid
-            gameState.bubbleGroup.add(firedBubble);
-            gameState.grid[firedGridPos.row][firedGridPos.col] = {
-                color: firedBubble.texture.key.replace('_bubble', ''),
-                sprite: firedBubble
-            };
-            
-            checkForMatches.call(this, firedGridPos.col, firedGridPos.row);
-            return;
-        }
-        
-        // Last resort: try to find ANY empty position near the collision
-        const anyEmpty = findAnyEmptyPosition(firedBubble.x, firedBubble.y);
-        if (anyEmpty) {
-            const worldPos = gridToWorld(anyEmpty.col, anyEmpty.row);
-            firedBubble.setPosition(worldPos.x, worldPos.y);
-            
-            gameState.bubbleGroup.add(firedBubble);
-            gameState.grid[anyEmpty.row][anyEmpty.col] = {
-                color: firedBubble.texture.key.replace('_bubble', ''),
-                sprite: firedBubble
-            };
-            
-            checkForMatches.call(this, anyEmpty.col, anyEmpty.row);
-            return;
-        }
-        
-        // No position available at all
-        logger.warn('⚠️ No valid position found, destroying bubble');
+    if (gridPos) {
+        placeBubbleOnGrid(firedBubble, gridPos.col, gridPos.row);
+    } else {
+        // No valid position found - destroy the bubble
+        logger.warn('⚠️ No valid grid position found, destroying bubble');
         firedBubble.destroy();
-        return;
     }
-    
-    // Snap to the empty grid position next to the collision
-    const worldPos = gridToWorld(emptyPos.col, emptyPos.row);
-    firedBubble.setPosition(worldPos.x, worldPos.y);
-    
-    // Add to bubble group and grid
-    gameState.bubbleGroup.add(firedBubble);
-    if (gameState.grid[emptyPos.row]) {
-        gameState.grid[emptyPos.row][emptyPos.col] = {
-            color: firedBubble.texture.key.replace('_bubble', ''),
-            sprite: firedBubble
-        };
-    }
-    
-    // Check for matches
-    checkForMatches.call(this, emptyPos.col, emptyPos.row);
 }
 
 /**
- * Find nearest empty neighbor position (prioritizes position closest to fired bubble)
+ * Handle collision with wall (top or sides)
  */
-function findNearestEmptyNeighbor(col, row, firedX, firedY) {
+function handleWallCollision(firedBubble) {
+    // Stop the bubble
+    firedBubble.setVelocity(0, 0);
+    firedBubble.body.enable = false;
+    
+    // Find the best grid position near the wall collision
+    const gridPos = findBestGridPosition(firedBubble.x, firedBubble.y);
+    
+    if (gridPos) {
+        placeBubbleOnGrid(firedBubble, gridPos.col, gridPos.row);
+    } else {
+        // No valid position found - destroy the bubble
+        logger.warn('⚠️ No valid grid position found for wall collision, destroying bubble');
+        firedBubble.destroy();
+    }
+}
+
+/**
+ * Calculate the precise collision point between two bubbles
+ */
+function calculateCollisionPoint(bubble1, bubble2) {
+    // Calculate the point where the bubbles would touch
+    const dx = bubble2.x - bubble1.x;
+    const dy = bubble2.y - bubble1.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Normalize the direction vector
+    const normalizedX = dx / distance;
+    const normalizedY = dy / distance;
+    
+    // Calculate the collision point (where bubbles touch)
+    const touchDistance = BUBBLE_RADIUS * 2;
+    const collisionX = bubble2.x - (normalizedX * touchDistance);
+    const collisionY = bubble2.y - (normalizedY * touchDistance);
+    
+    return { x: collisionX, y: collisionY };
+}
+
+/**
+ * Find the best grid position for a bubble at given world coordinates
+ */
+function findBestGridPosition(worldX, worldY) {
+    // Convert world position to grid coordinates
+    const gridPos = worldToGrid(worldX, worldY);
+    
+    // Check if the calculated position is valid and empty
+    if (isValidGridPosition(gridPos.col, gridPos.row) && 
+        !gameState.grid[gridPos.row][gridPos.col]) {
+        return gridPos;
+    }
+    
+    // If not, find the nearest empty position
+    return findNearestEmptyPosition(gridPos.col, gridPos.row);
+}
+
+/**
+ * Find the nearest empty position using BFS
+ */
+function findNearestEmptyPosition(startCol, startRow) {
+    const visited = new Set();
+    const queue = [{ col: startCol, row: startRow, distance: 0 }];
+    visited.add(`${startCol},${startRow}`);
+    
+    while (queue.length > 0) {
+        const { col, row, distance } = queue.shift();
+        
+        // Check if this position is empty
+        if (isValidGridPosition(col, row) && !gameState.grid[row][col]) {
+            return { col, row };
+        }
+        
+        // If we've searched too far, stop
+        if (distance >= 3) continue;
+        
+        // Add neighbors to queue
+        const neighbors = getHexagonalNeighbors(col, row);
+        for (const neighbor of neighbors) {
+            const key = `${neighbor.c},${neighbor.r}`;
+            if (!visited.has(key)) {
+                visited.add(key);
+                queue.push({ col: neighbor.c, row: neighbor.r, distance: distance + 1 });
+            }
+        }
+    }
+    
+    return null; // No empty position found
+}
+
+/**
+ * Get hexagonal neighbors for a given position
+ */
+function getHexagonalNeighbors(col, row) {
     const isEvenRow = row % 2 === 0;
-    let neighbors;
     
     if (isEvenRow) {
-        neighbors = [
+        return [
             {c: col-1, r: row},     // left
             {c: col+1, r: row},     // right
             {c: col-1, r: row-1},   // top-left
@@ -761,7 +989,7 @@ function findNearestEmptyNeighbor(col, row, firedX, firedY) {
             {c: col, r: row+1}      // bottom-right
         ];
     } else {
-        neighbors = [
+        return [
             {c: col-1, r: row},     // left
             {c: col+1, r: row},     // right
             {c: col, r: row-1},     // top-left
@@ -770,58 +998,99 @@ function findNearestEmptyNeighbor(col, row, firedX, firedY) {
             {c: col+1, r: row+1}    // bottom-right
         ];
     }
-    
-    // Filter to only valid empty positions
-    const validNeighbors = neighbors.filter(({c, r}) => 
-        isValidGridPosition(c, r) && !gameState.grid[r][c]
-    );
-    
-    if (validNeighbors.length === 0) {
-        return null;
-    }
-    
-    // Sort by distance from fired bubble if position provided
-    if (firedX !== undefined && firedY !== undefined) {
-        validNeighbors.sort((a, b) => {
-            const aPos = gridToWorld(a.c, a.r);
-            const bPos = gridToWorld(b.c, b.r);
-            const aDist = Phaser.Math.Distance.Between(firedX, firedY, aPos.x, aPos.y);
-            const bDist = Phaser.Math.Distance.Between(firedX, firedY, bPos.x, bPos.y);
-            return aDist - bDist;
-        });
-    }
-    
-    return {col: validNeighbors[0].c, row: validNeighbors[0].r};
 }
 
 /**
- * Find any empty position in the grid near given world coordinates
+ * Place a bubble on the grid at the specified position
  */
-function findAnyEmptyPosition(x, y) {
-    const centerPos = worldToGrid(x, y);
-    const searchRadius = 3;
+function placeBubbleOnGrid(bubble, col, row) {
+    // Snap to exact grid position
+    const worldPos = gridToWorld(col, row);
+    bubble.setPosition(worldPos.x, worldPos.y);
     
-    // Search in expanding circles
-    for (let radius = 0; radius <= searchRadius; radius++) {
-        for (let row = Math.max(0, centerPos.row - radius); 
-             row <= Math.min(GRID_HEIGHT - 1, centerPos.row + radius); row++) {
-            for (let col = Math.max(0, centerPos.col - radius); 
-                 col <= Math.min(GRID_WIDTH - 1, centerPos.col + radius); col++) {
-                if (isValidGridPosition(col, row) && !gameState.grid[row][col]) {
-                    return {col, row};
-                }
-            }
-        }
+    // Add to bubble group
+    gameState.bubbleGroup.add(bubble);
+    
+    // Add to grid
+    if (gameState.grid[row]) {
+        gameState.grid[row][col] = {
+            color: bubble.texture.key.replace('_bubble', ''),
+            sprite: bubble
+        };
     }
     
-    return null;
+    // Check for matches
+    checkForMatches.call(this, col, row);
 }
+
 
 /**
  * Check if a grid position is valid (within bounds)
  */
 function isValidGridPosition(col, row) {
     return row >= 0 && row < GRID_HEIGHT && col >= 0 && col < GRID_WIDTH;
+}
+
+/**
+ * Validate input coordinates and clamp to valid ranges
+ */
+function validateInputCoordinates(x, y) {
+    // Clamp coordinates to game bounds
+    const clampedX = Math.max(0, Math.min(GAME_CONFIG.width, x));
+    const clampedY = Math.max(0, Math.min(GAME_CONFIG.height, y));
+    
+    // Check if coordinates are valid numbers
+    if (isNaN(clampedX) || isNaN(clampedY)) {
+        logger.warn('⚠️ Invalid input coordinates:', x, y);
+        return { x: GAME_CONFIG.width / 2, y: GAME_CONFIG.height / 2 };
+    }
+    
+    return { x: clampedX, y: clampedY };
+}
+
+/**
+ * Validate game state before operations
+ */
+function validateGameState(requiredState = null) {
+    if (!gameState) {
+        logger.error('❌ Game state is null');
+        return false;
+    }
+    
+    if (requiredState && gameState.currentState !== requiredState) {
+        logger.warn(`⚠️ Invalid state for operation. Required: ${requiredState}, Current: ${gameState.currentState}`);
+        return false;
+    }
+    
+    if (!gameState.grid || !Array.isArray(gameState.grid)) {
+        logger.error('❌ Grid is not properly initialized');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Throttle function to prevent rapid-fire input
+ */
+function throttle(func, delay) {
+    let timeoutId;
+    let lastExecTime = 0;
+    
+    return function (...args) {
+        const currentTime = Date.now();
+        
+        if (currentTime - lastExecTime > delay) {
+            func.apply(this, args);
+            lastExecTime = currentTime;
+        } else {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(this, args);
+                lastExecTime = Date.now();
+            }, delay - (currentTime - lastExecTime));
+        }
+    };
 }
 
 /**
@@ -946,53 +1215,39 @@ function checkForMatches(col, row) {
 }
 
 /**
- * Find all bubbles connected to the ceiling (row 0)
+ * Find all bubbles connected to the ceiling (row 0) using flood-fill
  */
 function findConnectedBubbles() {
     const connected = new Set();
+    const queue = [];
     
-    function bfs(col, row) {
-        const key = `${col},${row}`;
-        if (connected.has(key)) return;
-        if (!gameState.grid[row] || !gameState.grid[row][col]) return;
-        
-        connected.add(key);
-        
-        // Get neighbors based on hexagonal grid
-        const isEvenRow = row % 2 === 0;
-        let neighbors;
-        
-        if (isEvenRow) {
-            neighbors = [
-                {c: col-1, r: row},     // left
-                {c: col+1, r: row},     // right
-                {c: col-1, r: row-1},   // top-left
-                {c: col, r: row-1},     // top-right
-                {c: col-1, r: row+1},   // bottom-left
-                {c: col, r: row+1}      // bottom-right
-            ];
-        } else {
-            neighbors = [
-                {c: col-1, r: row},     // left
-                {c: col+1, r: row},     // right
-                {c: col, r: row-1},     // top-left
-                {c: col+1, r: row-1},   // top-right
-                {c: col, r: row+1},     // bottom-left
-                {c: col+1, r: row+1}    // bottom-right
-            ];
+    // Start flood-fill from all bubbles in the top row (ceiling)
+    for (let col = 0; col < GRID_WIDTH; col++) {
+        if (gameState.grid[0] && gameState.grid[0][col]) {
+            const key = `${col},0`;
+            connected.add(key);
+            queue.push({col, row: 0});
         }
-        
-        neighbors.forEach(({c: nc, r: nr}) => {
-            if (nc >= 0 && nc < GRID_WIDTH && nr >= 0 && nr < GRID_HEIGHT) {
-                bfs(nc, nr);
-            }
-        });
     }
     
-    // Start BFS from all bubbles in the top row (ceiling)
-    for (let col = 0; col < GRID_WIDTH; col++) {
-        if (gameState.grid[0][col]) {
-            bfs(col, 0);
+    // Flood-fill using BFS
+    while (queue.length > 0) {
+        const {col, row} = queue.shift();
+        
+        // Check all hexagonal neighbors
+        const neighbors = getHexagonalNeighbors(col, row);
+        for (const neighbor of neighbors) {
+            const {c, r} = neighbor;
+            const key = `${c},${r}`;
+            
+            // Skip if already processed or out of bounds
+            if (connected.has(key)) continue;
+            if (!isValidGridPosition(c, r)) continue;
+            if (!gameState.grid[r] || !gameState.grid[r][c]) continue;
+            
+            // Add to connected set and queue for further processing
+            connected.add(key);
+            queue.push({col: c, row: r});
         }
     }
     
@@ -1008,6 +1263,8 @@ function removeFloatingBubbles() {
     
     // Find all floating bubbles
     for (let row = 0; row < GRID_HEIGHT; row++) {
+        if (!gameState.grid[row]) continue;
+        
         for (let col = 0; col < GRID_WIDTH; col++) {
             if (gameState.grid[row][col]) {
                 const key = `${col},${row}`;
@@ -1024,8 +1281,9 @@ function removeFloatingBubbles() {
         
         floating.forEach(({col, row}) => {
             const gridItem = gameState.grid[row][col];
-            let sprite = null;
+            if (!gridItem) return;
             
+            let sprite = null;
             if (gridItem.sprite) {
                 sprite = gridItem.sprite;
             } else if (gridItem.destroy) {
@@ -1033,6 +1291,11 @@ function removeFloatingBubbles() {
             }
             
             if (sprite && sprite.destroy && typeof sprite.destroy === 'function') {
+                // Remove from bubble group
+                if (gameState.bubbleGroup && gameState.bubbleGroup.contains(sprite)) {
+                    gameState.bubbleGroup.remove(sprite);
+                }
+                
                 // Animate falling
                 this.tweens.add({
                     targets: sprite,
@@ -1049,6 +1312,7 @@ function removeFloatingBubbles() {
                 });
             }
             
+            // Clear grid position
             gameState.grid[row][col] = null;
         });
         
